@@ -170,7 +170,7 @@ export function assessIntent(question, unit, { passage = false } = {}) {
     reasons.push("missing-circumstance");
   if (answer) {
     // A sermon greeting ("أما بعد") is not a temporal relation.
-    const a = normalize(answer).replace(/(?:اما\s+بعد|وبعد)\s*[:،,.؛»]?/gu, "");
+    const a = normalize(answer).replace(/اما\s+بعد(?=\s|[:،,.؛»]|$)\s*[:،,.؛»]?/gu, "");
     if (
       requested.type === "time" &&
       source.type !== "time" &&
