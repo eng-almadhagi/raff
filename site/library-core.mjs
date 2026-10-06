@@ -2,9 +2,9 @@ import { normalize } from "./core.mjs";
 
 export const LIBRARY_VERSION = 1;
 const stop = new Set(
-  "ما ماذا هل كيف حكم عن في من على إلى الي هذا هذه ذلك الذي التي هو هي ان إن كان يكون the a an is are what how of in on to for does do".split(
-    " ",
-  ),
+  "ما ماذا لماذا متى اين أين هل كيف حكم عن في من على إلى الي هذا هذه ذلك الذي التي هو هي ان إن كان يكون هي اشرح وضح اذكر بحسب وفقا الملف الكتاب المصدر ورد يقول تقول وش ايش ممكن the a an is are what how why when where of in on to for does do explain describe according document book source please"
+    .split(" ")
+    .map(normalize),
 );
 export function libraryTerms(text) {
   return [

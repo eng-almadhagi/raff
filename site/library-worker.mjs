@@ -1,5 +1,6 @@
-import { importBook, searchLibrary } from "./library-core.mjs";
+import { importBook } from "./library-core.mjs?v=0.12.0";
 import { extractDocument } from "./document-import.mjs";
+import { semanticLibrarySearch } from "./library-semantic.mjs?v=0.12.0";
 self.onmessage = async ({ data }) => {
   try {
     let extraction;
@@ -16,7 +17,13 @@ self.onmessage = async ({ data }) => {
     const result =
       data.type === "import"
         ? importBook(payload)
-        : searchLibrary(data.books, data.question, data.scope);
+        : await semanticLibrarySearch(
+            data.books,
+            data.question,
+            data.scope,
+            (stage, detail) =>
+              self.postMessage({ id: data.id, progress: { stage, ...detail } }),
+          );
     if (extraction) {
       result.extraction = extraction;
       result.filename = data.payload.filename;

@@ -1,6 +1,6 @@
 import { normalize } from "./core.mjs";
-import { createLibrary } from "./library-ui.mjs?v=0.11.0";
-import { copy } from "./i18n.mjs?v=0.11.0";
+import { createLibrary } from "./library-ui.mjs?v=0.12.0";
+import { copy } from "./i18n.mjs?v=0.12.0";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -99,6 +99,7 @@ const personalLibrary = createLibrary({
   navigate: show,
   changed: () => {
     generation++;
+    personalLibrary.cancelSearch();
     worker?.terminate();
     worker = undefined;
     $("result").replaceChildren();
@@ -334,7 +335,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.11.0", import.meta.url),
+    new URL("./search-worker.mjs?v=0.12.0", import.meta.url),
     {
       type: "module",
     },
@@ -391,8 +392,8 @@ function translate() {
     .querySelector('[data-i18n="aboutText"]')
     .prepend(
       language === "ar"
-        ? "سُمّي رَفّ ليكون مكتبة علمية تنمو مع الباحث: ينشئ رفوفه ويضيف كتبه ويختار نطاق بحثه. تدعم «مكتبتي» الآن الكتب النصية المحفوظة في متصفحك، بفهرسة لفظية مستقلة عن المصادر العامة. "
-        : "Raff means a shelf: a research library that grows with you. Create shelves, add books and choose where to search. My library currently indexes text books locally in your browser, separately from the public sources. ",
+        ? "سُمّي رَفّ ليكون مكتبة علمية تنمو مع الباحث: ينشئ رفوفه ويضيف كتبه ويختار نطاق بحثه. تدعم «مكتبتي» الآن الكتب النصية المحفوظة في متصفحك، بفهرسة دلالية مستقلة عن المصادر العامة. "
+        : "Raff means a shelf: a research library that grows with you. Create shelves, add books and choose where to search. My library currently indexes text books by meaning locally in your browser, separately from the public sources. ",
     );
   $("question").placeholder = t().placeholder;
   $("release-note").textContent = t().disclosure;
@@ -634,6 +635,7 @@ $("method").onclick = () => show("method");
 $("library-nav").onclick = () => show("library");
 function changeScope() {
   const currentPage = page;
+  personalLibrary.cancelSearch();
   $("result").replaceChildren();
 
   lastQuestion = "";
@@ -669,6 +671,7 @@ $("theme").onclick = () => {
   }
 };
 $("reset").onclick = () => {
+  personalLibrary.cancelSearch();
   $("question").value = "";
   $("result").replaceChildren();
   $("search-metrics").hidden = true;

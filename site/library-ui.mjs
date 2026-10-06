@@ -1,4 +1,4 @@
-import { libraryDB } from "./library-store.mjs";
+import { libraryDB } from "./library-store.mjs?v=0.12.0";
 import { classifyPolicy, policyMessages } from "./policy.mjs";
 
 export function createLibrary({
@@ -20,12 +20,33 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.11.0", import.meta.url),
+      new URL("./library-worker.mjs?v=0.12.0", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
       const job = pending.get(data.id);
       if (!job) return;
+      if (data.progress) {
+        clearTimeout(job.timer);
+        job.timer = setTimeout(job.timeout, 120000);
+        const p = data.progress;
+        document.getElementById("status-detail").textContent =
+          p.stage === "model"
+            ? tr(
+                "جارٍ تجهيز نموذج البحث بالمعنى؛ التحميل الأول نحو 136 MB. يبقى الملف على جهازك.",
+                "Preparing the semantic model; first download is about 136 MB. Your document stays on your device.",
+              )
+            : p.stage === "index"
+              ? tr(
+                  `فهرسة «${p.title}» بالمعنى: ${p.done} من ${p.total}. يُحفظ التقدم لاستكماله لاحقًا.`,
+                  `Semantic indexing of “${p.title}”: ${p.done} of ${p.total}. Progress is saved for resuming.`,
+                )
+              : tr(
+                  "جارٍ مطابقة السؤال مع المقاطع المفهرسة…",
+                  "Matching your question against indexed passages…",
+                );
+        return;
+      }
       pending.delete(data.id);
       clearTimeout(job.timer);
       data.error ? job.reject(Error(data.error)) : job.resolve(data.result);
@@ -44,7 +65,7 @@ export function createLibrary({
     new Promise((resolve, reject) => {
       const id = crypto.randomUUID();
       if (!worker) resetWorker();
-      const timer = setTimeout(() => {
+      const timeout = () => {
         for (const job of pending.values()) {
           clearTimeout(job.timer);
           job.reject(Error("document-timeout"));
@@ -52,8 +73,9 @@ export function createLibrary({
         pending.clear();
         worker.terminate();
         worker = undefined;
-      }, 60000);
-      pending.set(id, { resolve, reject, timer });
+      };
+      const timer = setTimeout(timeout, 120000);
+      pending.set(id, { resolve, reject, timer, timeout });
       worker.postMessage({ ...data, id });
     });
   const tr = (ar, en) => (getLanguage() === "ar" ? ar : en);
@@ -145,8 +167,8 @@ export function createLibrary({
       node(
         "p",
         tr(
-          "بحث نصّي داخل كتبك المحلية فقط. النتائج مواضع مطابقة للمراجعة، وليست فتوى أو جوابًا مولّدًا.",
-          "Text search only in your local books. Results are matching passages for review, not a fatwa or generated answer.",
+          "بحث بالمعنى داخل كتبك المحلية فقط. يُجهّز الفهرس الدلالي عند أول سؤال ويُحفظ على جهازك. النتائج نصوص موثقة للمراجعة، وليست فتوى مولّدة.",
+          "Semantic search only in your local books. The semantic index is prepared on the first question and saved on your device. Results are source passages for review, not a generated fatwa.",
         ),
         "notice",
       ),
@@ -346,11 +368,14 @@ export function createLibrary({
         });
         // Only validated, completely indexed books are committed and made searchable.
         await libraryDB("put", "books", book);
+        mode = true;
+        scopeType = "book";
+        chosen = new Set([book.id]);
         await refresh();
         changed();
         panel.querySelector("[role=status]").textContent = tr(
-          `تمت فهرسة ${book.units.length} موضعًا. الكتاب جاهز للبحث.`,
-          `${book.units.length} passages indexed. The book is ready to search.`,
+          `حُفظ ${book.units.length} موضعًا، واختير الكتاب نطاقًا للبحث. اضغط «الانتقال للبحث في مكتبتي»؛ يُجهّز الفهرس الدلالي عند أول سؤال. اختر لغة الكتاب نفسها عند البحث.`,
+          `${book.units.length} passages saved; this book is now the search scope. Click “Search my library”; its semantic index is prepared on the first question. Select the book’s language when searching.`,
         );
       } catch (error) {
         const messages = {
@@ -523,8 +548,8 @@ export function createLibrary({
       node(
         "p",
         tr(
-          "هذه نتائج بحث لفظي للمراجعة، ولا تثبت وحدها كفاية الدليل أو صحة الحكم. لا يُولّد رَفّ فتوى من الكتب المضافة.",
-          "These are lexical search matches for review, not proof of sufficient evidence or a correct ruling. Raff does not generate a fatwa from imported books.",
+          "هذه نصوص مسترجعة بالمعنى من نطاقك المحدد. تُعرض المواضع الأصلية كاملة لحفظ السياق؛ راجع كفايتها للسؤال. لا يُولّد رَفّ فتوى من الكتب المضافة.",
+          "These passages were retrieved by meaning from your selected scope. Complete original passages preserve context; check whether they answer your question. Raff does not generate a fatwa from imported books.",
         ),
         "notice",
       ),
@@ -534,8 +559,8 @@ export function createLibrary({
         node(
           "p",
           tr(
-            "لا توجد مطابقة كافية. جرّب كلمات الموضوع كما وردت في الكتاب؛ لا نملأ النقص من مصادر خارج النطاق.",
-            "No sufficient match. Try the source terminology; nothing is filled in from outside the selected scope.",
+            "لم نعثر على مقطع وثيق الصلة بالسؤال. تحقق من اختيار الكتاب ولغته ومن النص المستخرج، أو حدّد موضوع السؤال أكثر. لا نملأ النقص من خارج النطاق.",
+            "No sufficiently relevant passage was found. Check the selected book, its language and extracted text, or make the topic more specific. Nothing is filled in from outside the selected scope.",
           ),
         ),
       );
@@ -576,6 +601,16 @@ export function createLibrary({
   }
   refresh().catch(() => render());
   return {
+    cancelSearch() {
+      if (importing || !pending.size) return;
+      for (const job of pending.values()) {
+        clearTimeout(job.timer);
+        job.reject(Error("cancelled"));
+      }
+      pending.clear();
+      worker?.terminate();
+      worker = undefined;
+    },
     get active() {
       return mode;
     },

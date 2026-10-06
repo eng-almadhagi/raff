@@ -1,9 +1,11 @@
 const connect = () =>
   new Promise((resolve, reject) => {
-    const request = indexedDB.open("raff-personal-library", 1);
+    const request = indexedDB.open("raff-personal-library", 2);
     request.onupgradeneeded = () => {
-      request.result.createObjectStore("shelves", { keyPath: "id" });
-      request.result.createObjectStore("books", { keyPath: "id" });
+      for (const name of ["shelves", "books", "vectors"]) {
+        if (!request.result.objectStoreNames.contains(name))
+          request.result.createObjectStore(name, { keyPath: "id" });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -14,7 +16,7 @@ export async function libraryDB(action, store, value) {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(
         store,
-        action === "getAll" ? "readonly" : "readwrite",
+        ["get", "getAll"].includes(action) ? "readonly" : "readwrite",
       );
       const request = tx.objectStore(store)[action](value);
       tx.oncomplete = () => resolve(request.result);
