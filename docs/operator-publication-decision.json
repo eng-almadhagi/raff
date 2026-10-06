@@ -13,6 +13,8 @@
       "islamqa-ar",
       "islamqa-en"
     ],
-    "instruction": "أنا أطلب نشر الموقع بالمحتوى الحالي وأتحمل مسؤولية قرار النشر. هذا يحدّث توجيهي السابق بتأجيل نشر البيانات غير محسومة الترخيص."
+    "instruction": "أنا أطلب نشر الموقع بالمحتوى الحالي وأتحمل مسؤولية قرار النشر. هذا يحدّث توجيهي السابق بتأجيل نشر البيانات غير محسومة الترخيص.",
+    "availability_scope": "competition_only",
+    "withdrawal_commitment": "End public availability after the competition; do not republish without the required rights-holder permissions."
   }
 }
