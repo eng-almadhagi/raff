@@ -97,11 +97,6 @@ export function scopeConflict(question, entry) {
   const occasion = q.match(/(?:عاشوراء|عرفه|عرفة)/u)?.[0];
   if (occasion && !(title + " " + (entry.question || "")).includes(occasion))
     return true;
-  if (
-    /فضل|فضيله/u.test(q) &&
-    !/^(?:ما\s+)?(?:فضل|فضيلة|فضيله|فضائل|ثواب|اجر|أجر)\s/u.test(title)
-  )
-    return true;
   const grave = /(?:قبر|قبور|grave|cemeter)/iu;
   if (grave.test(q) && !grave.test(title + " " + (entry.question || "")))
     return true;
@@ -471,20 +466,13 @@ export class PagedEngine {
         }
         const plural =
           kind === "qualified" ||
-          /(?:^ما حكم|^ما المذكور عن|^اعرض ما ورد عن|قبل.+بعد)/u.test(
-            normalize(question),
-          ) ||
+          /(?:قبل.+بعد)/u.test(normalize(question)) ||
           /(?:فتاوي|النصوص|قارن|compare|opinions)/iu.test(normalize(question));
         // A small score margin among relevant fatwas is not linguistic ambiguity.
         // Ambiguous questions are handled by policy before retrieval.
         const selected = eligible
-            .filter(
-              (r) =>
-                enough(r) &&
-                (!best.subject.lead || r.subject.lead) &&
-                r.score >= best.score - 0.1,
-            )
-            .slice(0, 8),
+            .filter((r) => enough(r) && r.score >= best.score - 0.2)
+            .slice(0, 20),
           citations = [];
         for (const r of selected) {
           const c = await this.citation(meta, r.id, true, question);

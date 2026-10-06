@@ -1,13 +1,13 @@
-name: Deploy approved static Raf
+name: Deploy static Raff with source data
 on:
   workflow_dispatch:
     inputs:
       content_url:
-        description: 'Public HTTPS ZIP of approved content (catalog at ZIP root)'
+        description: 'Public HTTPS ZIP of selected content (catalog at ZIP root)'
         required: true
         type: string
       content_sha256:
-        description: 'SHA-256 of the approved ZIP'
+        description: 'SHA-256 of the selected ZIP'
         required: true
         type: string
 permissions:
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -v
-      - name: Fetch selected approved content
+      - name: Fetch selected selected content
         env:
           CONTENT_URL: ${{ inputs.content_url }}
           CONTENT_SHA256: ${{ inputs.content_sha256 }}

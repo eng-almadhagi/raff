@@ -77,3 +77,9 @@ test("a topic listed only in a multi-part question is not answer evidence", () =
     true,
   );
 });
+
+test("transliterated unit spellings match without altering the source", () => {
+ assert.deepEqual(intentTerms("rakahs", vocabulary),intentTerms("rak’ahs", vocabulary));
+ assert.equal(answerSupportsQuestion({answer:"A telescope has three lenses."},"minimum lenses",vocabulary),false);
+ assert.equal(answerSupportsQuestion({answer:"The minimum is two lenses."},"minimum lenses",vocabulary),true);
+});

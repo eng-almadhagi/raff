@@ -7,7 +7,7 @@ import shutil
 import re
 import hashlib
 from pathlib import Path
-from raf.rights import require_public_display
+from raf.rights import require_publication_decision
 from tools.pages_runtime import install
 
 
@@ -22,13 +22,11 @@ def main():
     for book in catalog:
         if not re.fullmatch(r'[a-z0-9-]+',book['id']) or book.get('format')!='sharded-v1':
             raise SystemExit('A current source-isolated sharded content release is required')
-        if book.get('research',True):
-            raise SystemExit('Research release cannot be published')
         approval=json.loads((content/'data'/book['id']/'approval.json').read_text(encoding='utf-8'))
         approved_files.append(content/'data'/book['id']/'approval.json')
-        require_public_display(approval)
-        if approval.get('scientific_review',{}).get('approved') is not True:
-            raise SystemExit('Source release review is not recorded')
+        mode = require_publication_decision(approval, book['id'])
+        if book.get('research', True) and mode != 'operator-directed-preview':
+            raise SystemExit('Research release cannot be published without an operator decision')
         base=(content/'data'/book['id']).resolve()
         for name,expected in book['hashes'].items():
             filename=name+('.gz' if name.endswith('.json') and book.get('compression')=='gzip' else '')

@@ -20,6 +20,16 @@ const numberWords = {
   عشرة: "عشر",
 };
 const topicForms = {
+  اختلاف: "خلاف",
+  اختلف: "خلاف",
+  يختلف: "خلاف",
+  اختلافات: "خلاف",
+  فتاوي: "فتوى",
+  اجر: "فضل",
+  ثواب: "فضل",
+  فضيلة: "فضل",
+  تفضل: "فضل",
+  تفضيل: "فضل",
   اعطاء: "دفع",
   يفطر: "صوم",
   افطار: "صوم",
@@ -37,7 +47,7 @@ const topicForms = {
 };
 topicForms.امسح = "مسح";
 topicForms.شربة = "مرق";
-framing.add("فضل");
+
 framing.add("minimum");
 framing.add("number");
 framing.add("while");
@@ -60,6 +70,8 @@ for (const word of [
   "opinions",
 ])
   framing.add(word);
+for (const topic of ["اختلاف", "خلاف", "فتوى", "فتاوي", "opinions"])
+  framing.delete(topic);
 const canonical = (t) =>
   numberWords[t] ||
   topicForms[t] ||
@@ -67,6 +79,7 @@ const canonical = (t) =>
     ? t.replace(/(?:ing|s)$/u, "").replace(/e$/u, "")
     : t);
 export function intentTerms(text, vocabulary) {
+  text = text.replace(/rak[’'‘-]?a[’']?h?s?/giu, "rakah");
   const filtered = terms(text, vocabulary).filter((t) => !framing.has(t));
   if (!filtered.length)
     return [...new Set(terms(text, vocabulary).map(canonical))];
@@ -74,20 +87,43 @@ export function intentTerms(text, vocabulary) {
 }
 
 export function answerSupportsQuestion(unit, question, vocabulary) {
-  if (!question || !unit.answer) return true;
+  const answer = unit.answer || unit.text;
+  if (!question || !answer) return false;
+  if (
+    /قبل.+بعد/u.test(question) &&
+    !(answer.includes("قبل") && answer.includes("بعد"))
+  )
+    return false;
   const requested = intentTerms(question, vocabulary);
+  const body = intentTerms(answer, vocabulary);
+  // Requested comparisons and numeric limits need affirmative textual support.
+  if (
+    /minimum|least|fewest/iu.test(question) &&
+    !/minimum|least|fewest/iu.test(answer)
+  )
+    return false;
+  if (requested.includes("فضل") && !body.includes("فضل")) return false;
+  if (
+    requested.includes("خلاف") &&
+    requested.includes("فتوى") &&
+    !(
+      body.includes("خلاف") &&
+      (body.includes("فتوى") || body.includes("علماء"))
+    )
+  )
+    return false;
   if (
     /(?:forget|نسيان|ناسيا)/iu.test(question) &&
-    !/(?:forget|forgot|نسي|ناسيا)/iu.test(unit.answer)
+    !/(?:forget|forgot|نسي|ناسيا)/iu.test(answer)
   )
     return false;
   if (
     /(?:يخطب|اثناء الخطبه|أثناء الخطبة)/u.test(question) &&
-    !/(?:خطب|خطبة|خطبه)/u.test(unit.answer)
+    !/(?:خطب|خطبة|خطبه)/u.test(answer)
   )
     return false;
   const supplied = intentTerms(
-    (unit.question || "") + " " + unit.answer,
+    (unit.question || "") + " " + answer,
     vocabulary,
   );
   // Explicit purification conditions must be supported, even in a short answer.
@@ -98,12 +134,12 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
     )
       return false;
   }
-  if (unit.answer.length <= 850) return true;
+  if (answer.length <= 850) return true;
   const subject = intentTerms(question, vocabulary)[0];
   if (!subject) return true;
   // A question may list several issues while its answer addresses only some.
   // Do not mistake a mention in that question for evidence in the long answer.
-  const bodyTerms = intentTerms(unit.answer, vocabulary);
+  const bodyTerms = intentTerms(answer, vocabulary);
   return (
     bodyTerms.includes(subject) ||
     (requested.length >= 2 &&
@@ -133,7 +169,8 @@ export function subjectQuery(question, frequencies, count, vocabulary) {
     );
   const weights = new Map(wanted.map((t) => [t, weight(t)]));
   const total = [...weights.values()].reduce((a, b) => a + b, 0) || 1;
-  return { question, wanted, weights, total };
+  const anchor = [...wanted].sort((a, b) => weights.get(b) - weights.get(a))[0];
+  return { question, wanted, weights, total, anchor };
 }
 export function subjectMatch(query, entry, document) {
   const { question, wanted, weights, total } = query;
@@ -173,7 +210,8 @@ export function subjectMatch(query, entry, document) {
     lead,
     prefix,
     ordered,
-    anchor: document.title.has(wanted[0]) || document.question.has(wanted[0]),
+    anchor:
+      document.title.has(query.anchor) || document.question.has(query.anchor),
     score:
       0.3 * titleCoverage +
       0.2 * questionCoverage +

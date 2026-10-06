@@ -19,3 +19,25 @@ def require_public_display(manifest):
     require_grants(manifest, "index", "display_full_units")
     if manifest["rights"].get("publish_allowed") is not True:
         raise ValueError("Publication rights are not documented")
+
+
+def require_publication_decision(manifest, source_id):
+    """Accept an explicit operator decision without representing it as a license.
+
+    A documented prohibition is never overridden by this deployment mode.
+    Scientific approval remains separate and may be pending in a public preview.
+    """
+    decision = manifest.get("operator_publication_decision", {})
+    if decision:
+        if (manifest.get("explicit_prohibition") is not False
+                or decision.get("publish_current_content") is not True
+                or decision.get("license_status") != "unresolved"
+                or source_id not in decision.get("sources", [])
+                or not decision.get("recorded_at")
+                or not decision.get("instruction")):
+            raise ValueError("Incomplete operator publication decision or explicit prohibition")
+        return "operator-directed-preview"
+    require_public_display(manifest)
+    if manifest.get("scientific_review", {}).get("approved") is not True:
+        raise ValueError("Source release review is not recorded")
+    return "licensed-reviewed"

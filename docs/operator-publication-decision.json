@@ -1,0 +1,18 @@
+{
+  "explicit_prohibition": false,
+  "scientific_review": {
+    "approved": false,
+    "status": "technical_and_source_checks_completed_specialist_review_pending"
+  },
+  "operator_publication_decision": {
+    "recorded_at": "2026-10-06",
+    "publish_current_content": true,
+    "license_status": "unresolved",
+    "sources": [
+      "fatawa-islamiyyah-1708",
+      "islamqa-ar",
+      "islamqa-en"
+    ],
+    "instruction": "أنا أطلب نشر الموقع بالمحتوى الحالي وأتحمل مسؤولية قرار النشر. هذا يحدّث توجيهي السابق بتأجيل نشر البيانات غير محسومة الترخيص."
+  }
+}

@@ -25,7 +25,6 @@
       >
       <nav aria-label="Navigation">
         <button id="home" data-i18n="home">اسأل رَفّ</button
-        ><button id="browse" data-i18n="browse">تصفّح المصادر</button
         ><button id="about" data-i18n="about">عن المشروع</button
         ><button id="method" data-i18n="method">المنهجية والمصادر</button>
       </nav>
@@ -56,7 +55,7 @@
         <button id="theme" type="button" aria-label="تبديل المظهر">◐</button>
       </div>
     </header>
-    <main>
+    <main hidden>
       <section id="intro" class="hero">
         <span class="eyebrow" data-i18n="eyebrow"></span>
         <h1>
@@ -65,7 +64,7 @@
         <p data-i18n="intro"></p>
         <div class="facts" id="facts"></div>
       </section>
-      <section class="search-panel" aria-label="Search">
+      <section id="search-panel" class="search-panel" aria-label="Search">
         <span id="scope-label" class="field-label" data-i18n="scope"></span>
         <div
           id="book"
@@ -90,16 +89,6 @@
       </section>
       <div id="starter" class="topics"></div>
       <section id="result" aria-live="polite"></section>
-      <section id="library" hidden>
-        <div class="section-heading">
-          <h2 data-i18n="browse"></h2>
-          <span id="counts"></span>
-        </div>
-        <label for="filter" data-i18n="filter"></label
-        ><input id="filter" type="search" />
-        <div id="entries"></div>
-        <button id="more" type="button" data-i18n="more"></button>
-      </section>
       <section id="about-panel" class="card" hidden>
         <h2 data-i18n="about"></h2>
         <p data-i18n="aboutText"></p>
