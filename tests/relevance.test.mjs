@@ -152,3 +152,23 @@ test("a retained question marker is not evidence from the answer", () => {
     false,
   );
 });
+
+test("deployment-prepared subjects reproduce runtime scoring inputs exactly", async () => {
+  const { prepareSubjects, restoreSubjects } = await import(
+    "../site/relevance.mjs"
+  );
+  const index = [
+    { title: "زكاة النقود", question: "ما مقدار زكاة النقود؟" },
+    { title: "An independent title", question: "How does this work?" },
+  ];
+  const prepared = prepareSubjects(index, { stop: [], concepts: {} });
+  assert.deepEqual(
+    restoreSubjects(
+      prepared.documents.map((d) => [[...d.title], [...d.question]]),
+      index.length,
+    ),
+    prepared,
+  );
+  assert.throws(() => restoreSubjects([], 2), /Incomplete/);
+  assert.throws(() => restoreSubjects([[["valid"], [42]]], 1), /Invalid/);
+});

@@ -1,6 +1,6 @@
-import { normalize } from "./core.mjs";
-import { createLibrary } from "./library-ui.mjs?v=0.12.0";
-import { copy } from "./i18n.mjs?v=0.12.0";
+import { normalize } from "./core.mjs?v=0.13.1";
+import { createLibrary } from "./library-ui.mjs?v=0.13.1";
+import { copy } from "./i18n.mjs?v=0.13.1";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -335,7 +335,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.12.0", import.meta.url),
+    new URL("./search-worker.mjs?v=0.13.1", import.meta.url),
     {
       type: "module",
     },
@@ -602,10 +602,16 @@ async function ask() {
   status(t().searching);
   if (personalLibrary.active) {
     const requestGeneration = generation;
+    const started = performance.now();
     try {
       const result = await personalLibrary.search(lastQuestion);
       if (requestGeneration !== generation) return;
       $("result").replaceChildren(result);
+      $("search-metrics").textContent =
+        language === "ar"
+          ? `الوقت الكلي: ${((performance.now() - started) / 1000).toFixed(2)} ث`
+          : `Total time: ${((performance.now() - started) / 1000).toFixed(2)} s`;
+      $("search-metrics").hidden = false;
       setBusy(false);
       $("submit").disabled = false;
       status(t().complete);

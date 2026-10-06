@@ -6,9 +6,16 @@ export const normalize = (s) =>
     .replace(/[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06edـ]/gu, "")
     .replace(/[أإآ]/gu, "ا")
     .replace(/ى/gu, "ي");
+const stopSets = new WeakMap();
 export function terms(text, vocabulary) {
-  const stop = new Set(vocabulary.stop),
-    concepts = vocabulary.concepts;
+  // Vocabulary is immutable for a loaded corpus. Avoid rebuilding the same set
+  // for every title, question and citation while preparing large indexes.
+  let stop = stopSets.get(vocabulary);
+  if (!stop) {
+    stop = new Set(vocabulary.stop);
+    stopSets.set(vocabulary, stop);
+  }
+  const concepts = vocabulary.concepts;
   return (normalize(text).match(/[\p{L}\p{N}_]+/gu) || []).flatMap((t) => {
     if (stop.has(t) || /^\d+$/u.test(t) || t.length < 2) return [];
     let w = t;

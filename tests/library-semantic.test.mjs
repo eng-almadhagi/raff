@@ -54,3 +54,60 @@ test("high semantic similarity does not turn opening hours into financial eviden
   ];
   assert.equal(selectSemanticPassages(rows, "كم راتب موظف المكتبة؟").length, 0);
 });
+
+test("a distinct full text match returns its original reference without loading a model", async () => {
+  const { semanticLibrarySearch } = await import(
+    "../site/library-semantic.mjs"
+  );
+  const book = {
+    id: "local-fixture",
+    language: "ar",
+    title: "دليل",
+    units: [
+      {
+        id: 1,
+        reference: "مادة 1",
+        text: "يقدم طلب العضوية عبر استمارة إلكترونية، ثم يراجع الموظف البيانات خلال يومي عمل. لا تصبح العضوية فعالة قبل تأكيد البريد الإلكتروني.",
+      },
+      {
+        id: 2,
+        reference: "مادة 2",
+        text: "تفتح القاعة في الصباح وتغلق مساء الجمعة. ويحظر التدخين وإدخال الأطعمة والمشروبات إلى قاعات المطالعة.",
+      },
+    ],
+  };
+  const rows = await semanticLibrarySearch(
+    [book],
+    "كيف يقدم طلب العضوية؟",
+    { bookIds: [book.id], language: "ar" },
+    () => {
+      throw Error("must not prepare model");
+    },
+  );
+  assert.equal(rows[0].reference, "مادة 1");
+  assert.equal(rows[0].text, book.units[0].text);
+  assert.equal(rows.searchInfo.mode, "lexical");
+});
+
+test("booking deadline requires booking evidence, not just an event start time", () => {
+  const rows = [
+    {
+      bookId: "b",
+      unitIds: [1],
+      text: "تبدأ الورشة في العاشرة صباحًا وتستمر ثلاث ساعات.",
+      similarity: 0.94,
+    },
+    {
+      bookId: "b",
+      unitIds: [2],
+      text: "يشترط حجز مقعد قبل مساء الأحد. ولا يسمح بالدخول دون تأكيد الحجز.",
+      similarity: 0.9,
+    },
+  ];
+  assert.deepEqual(
+    selectSemanticPassages(rows, "ما آخر موعد لحجز مقعد في الورشة؟").map(
+      (r) => r.unitIds,
+    ),
+    [[2]],
+  );
+});

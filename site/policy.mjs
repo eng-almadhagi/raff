@@ -1,7 +1,9 @@
-import { normalize } from "./core.mjs";
+import { normalize } from "./core.mjs?v=0.13.1";
 
 export const policyMessages = {
   ar: {
+    "clarify-zakat":
+      "أي نوع من الزكاة تقصد: زكاة النقود والذهب وعروض التجارة، أم زكاة الفطر، أم الزروع والماشية؟ وهل تسأل عن النصاب أم النسبة أو المقدار الواجب؟ حدّد النوع حتى نرجع إلى النص المناسب.",
     refer:
       "هذا السؤال يتطلب معرفة تفاصيل حالتك من مختص مؤهل. لا يصدر رَفّ حكمًا شخصيًا نهائيًا. يمكنك البحث بصياغة عامة عن النصوص المنشورة ذات الصلة.",
     clarify:
@@ -22,6 +24,8 @@ export const policyMessages = {
       "اللغة المختارة هي الإنجليزية. لن أترجم جوابًا عربيًا لملء نتيجة إنجليزية؛ اختر العربية إن أردت مصادرها.",
   },
   en: {
+    "clarify-zakat":
+      "Which type of zakat do you mean: money, gold or trade goods; zakat al-fitr; or crops and livestock? Are you asking about the nisab threshold or the rate/amount due? Please specify so we can retrieve the relevant source.",
     refer:
       "Your circumstances need a qualified scholar who can examine the details. Raff does not issue a final personal ruling. You may ask a general question to find relevant published source texts.",
     clarify:
@@ -46,12 +50,23 @@ export const policyMessages = {
 export function classifyPolicy(question, language = "ar") {
   const q = normalize(question).replace(/ة/gu, "ه").trim(),
     words = q.split(/[^\p{L}\p{N}_]+/u);
+
   if (
     /(?:اختلق|اخترع|من عندك|تجاهل (?:المصادر|التعليمات)|بدون مصدر|رقم صفحه يبدو|حتي لو المصدر|invent|fabricate|fake reference|ignore (?:sources|instructions)|make up (?:a |an )?(?:reference|page number|citation|source))/u.test(
       q,
     )
   )
     return "refuse";
+  if (
+    /(?:زكا[هت]|\bzaka[th])/iu.test(q) &&
+    /مقدار|كم|نسب[هت]|حساب|احسب|نصاب|\b(?:amount|much|rate|calculate|nisab)\b/iu.test(
+      q,
+    ) &&
+    !/فطر|نقود|مال|اموال|ذهب|فض[هت]|تجار[هت]|زروع|زرع|ثمار|ماشية|ماشيه|انعام|ابل|بقر|غنم|\b(?:fitr|money|wealth|cash|gold|silver|trade|crop|livestock)\b/iu.test(
+      q,
+    )
+  )
+    return "clarify-zakat";
   if (
     /(?:هل انت مفت|هل جوابك فتوي شخصيه|are you a mufti|are you a scholar|is this a personal fatwa)/u.test(
       q,
@@ -132,6 +147,17 @@ export function classifyPolicy(question, language = "ar") {
   return /(?:ما تعريف|ما معني|ما هي|ما هو|what is|define)/u.test(q)
     ? "information"
     : "explain";
+}
+
+export function classifyLibraryPolicy(question, language) {
+  const policy = classifyPolicy(question, language);
+  // Personal libraries also contain ordinary manuals. First-person wording alone
+  // must not turn a question about borrowing a book into a personal fatwa.
+  const religiousCase =
+    /فتو|فتاو|شرع|حلال|حرام|حكم|صلا|صوم|صيام|زكا|حج|عمر[ةه]|طلاق|طلقت|زوج|نكاح|ميراث|ورث|ربا|قرض|حلف|نذر|كفار|وضوء|وضوئي|طهار|حيض|دين|افطر|أفطر|\b(?:fatwa|ruling|halal|haram|prayer|fast|fasting|zakat|hajj|divorce|marriage|inheritance|interest|oath)\b/iu;
+  return policy === "refer" && !religiousCase.test(question)
+    ? "explain"
+    : policy;
 }
 
 export function directReference(question) {

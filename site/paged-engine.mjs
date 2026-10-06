@@ -1,15 +1,21 @@
-import { terms, evidence, normalize, focusedPreview } from "./core.mjs";
+import {
+  terms,
+  evidence,
+  normalize,
+  focusedPreview,
+} from "./core.mjs?v=0.13.1";
 import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.12.0";
+} from "./policy.mjs?v=0.13.1";
 import {
   prepareSubjects,
+  restoreSubjects,
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.12.0";
+} from "./relevance.mjs?v=0.13.1";
 
 export const bucket = (text) => {
   let h = 0;
@@ -75,6 +81,19 @@ export function searchQuery(question, language) {
 export function scopeConflict(question, entry) {
   const q = normalize(question),
     title = normalize(entry.title);
+  if (/(?:زكا[ةهت]|zaka[th])/iu.test(q)) {
+    const fitr = /فطر|\bfitr\b/iu;
+    if (fitr.test(title) && !fitr.test(q)) return true;
+    if (
+      /الماضي|سنوات سابق|اعوام سابق|سنين ماضي|past years|previous years/iu.test(
+        title,
+      ) &&
+      !/ماضي|سابق|سنوات|سنين|تاخير|تأخير|لم اخرج|لم أخرج|past|previous|missed/iu.test(
+        q,
+      )
+    )
+      return true;
+  }
   // A disagreement about one named subtopic is not an explanation of why
   // fatwas differ in general. Keep general sources about fatwas eligible.
   if (
@@ -170,27 +189,51 @@ export class PagedEngine {
     this.embed = embed;
     this.progress = progress;
     this.loaded = new Map();
+    this.loadingIndexes = new Map();
     this.last = new Map();
   }
   async load(meta, vectors = false) {
     if (!/^[a-z0-9-]+$/u.test(meta.id)) throw Error("Invalid source identity");
     const base = `./data/${meta.id}/`;
     if (!this.loaded.has(meta.id)) {
-      const index = await checked(
-        base + "index.json",
-        meta.hashes["index.json"],
-        false,
-        meta.compression === "gzip",
-      );
-      if (index.length !== meta.units) throw Error("Incomplete source index");
-      this.loaded.set(meta.id, {
-        meta,
-        index,
-        base,
-        postings: new Map(),
-        text: new Map(),
-        subjects: prepareSubjects(index, this.vocabulary),
-      });
+      if (!this.loadingIndexes.has(meta.id)) {
+        const loading = (async () => {
+          const [index, prepared] = await Promise.all([
+            checked(
+              base + "index.json",
+              meta.hashes["index.json"],
+              false,
+              meta.compression === "gzip",
+            ),
+            meta.has_subjects
+              ? checked(
+                  base + "subjects.json",
+                  meta.hashes["subjects.json"],
+                  false,
+                  meta.compression === "gzip",
+                )
+              : null,
+          ]);
+          if (index.length !== meta.units)
+            throw Error("Incomplete source index");
+          this.loaded.set(meta.id, {
+            meta,
+            index,
+            base,
+            postings: new Map(),
+            text: new Map(),
+            subjects: prepared
+              ? restoreSubjects(prepared, index.length)
+              : prepareSubjects(index, this.vocabulary),
+          });
+        })();
+        this.loadingIndexes.set(meta.id, loading);
+      }
+      try {
+        await this.loadingIndexes.get(meta.id);
+      } finally {
+        this.loadingIndexes.delete(meta.id);
+      }
     }
     const book = this.loaded.get(meta.id);
     if (vectors && !book.focus) {
@@ -442,14 +485,58 @@ export class PagedEngine {
       };
     const query = searchQuery(question, language),
       sources = [];
+    const fast = new Map();
+    if (reference === null && kind !== "qualified") {
+      await Promise.all(
+        metas.map(async (meta) => {
+          try {
+            const book = await this.load(meta);
+            const subject = subjectQuery(
+              query,
+              book.subjects.frequencies,
+              book.index.length,
+              this.vocabulary,
+            );
+            if (subject.wanted.length < 2) return;
+            const candidates = book.index
+              .map((u, i) => ({
+                u,
+                match: subjectMatch(subject, u, book.subjects.documents[i]),
+              }))
+              .filter(
+                ({ u, match }) =>
+                  u.retrievable &&
+                  !scopeConflict(query, u) &&
+                  match.titleCoverage >= 0.99 &&
+                  match.precision >= 0.75,
+              )
+              .sort((a, b) => b.match.score - a.match.score)
+              .slice(0, 3);
+            for (const { u } of candidates) {
+              const citation = await this.citation(meta, u.id, false, question);
+              if (answerSupportsQuestion(citation, query, this.vocabulary)) {
+                fast.set(meta.id, citation);
+                break;
+              }
+            }
+          } catch {
+            /* The normal source path reports failures with its source identity. */
+          }
+        }),
+      );
+    }
     let vector = null;
-    if (reference === null) {
+    if (reference === null && fast.size < metas.length) {
       const preparationStarted = performance.now();
       // Model setup and immutable source indexes are independent. Fetch both
       // concurrently; retain source failures for the existing per-source UI.
       [vector] = await Promise.all([
         this.embed(query),
-        Promise.allSettled(metas.map((meta) => this.load(meta, true))),
+        Promise.allSettled(
+          metas
+            .filter((meta) => !fast.has(meta.id))
+            .map((meta) => this.load(meta, true)),
+        ),
       ]);
       this.lastPreparationMilliseconds = Math.round(
         performance.now() - preparationStarted,
@@ -458,6 +545,15 @@ export class PagedEngine {
     for (const meta of metas) {
       this.progress(meta.title);
       try {
+        if (fast.has(meta.id)) {
+          sources.push({
+            id: meta.id,
+            title: meta.title,
+            kind: "citation",
+            citations: [fast.get(meta.id)],
+          });
+          continue;
+        }
         if (reference !== null) {
           const book = await this.load(meta),
             entry = meta.id.startsWith("islamqa-")

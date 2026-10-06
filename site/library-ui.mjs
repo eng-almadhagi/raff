@@ -1,5 +1,5 @@
-import { libraryDB } from "./library-store.mjs?v=0.12.0";
-import { classifyPolicy, policyMessages } from "./policy.mjs";
+import { libraryDB } from "./library-store.mjs?v=0.13.1";
+import { classifyLibraryPolicy, policyMessages } from "./policy.mjs?v=0.13.1";
 
 export function createLibrary({
   panel,
@@ -15,12 +15,28 @@ export function createLibrary({
     chosen = new Set(),
     available = false,
     importing = false;
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("raff-library-scope") || "null",
+    );
+    if (
+      saved &&
+      ["all", "book", "shelf", "shelves"].includes(saved.scopeType) &&
+      Array.isArray(saved.chosen)
+    ) {
+      mode = saved.mode === true;
+      scopeType = saved.scopeType;
+      chosen = new Set(saved.chosen.filter((id) => typeof id === "string"));
+    }
+  } catch {
+    /* Optional preference; books remain in IndexedDB. */
+  }
   let worker;
   const pending = new Map();
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.12.0", import.meta.url),
+      new URL("./library-worker.mjs?v=0.13.1", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
@@ -139,6 +155,14 @@ export function createLibrary({
       .map((b) => b.id);
   }
   function renderScope() {
+    try {
+      localStorage.setItem(
+        "raff-library-scope",
+        JSON.stringify({ mode, scopeType, chosen: [...chosen] }),
+      );
+    } catch {
+      /* Optional preference. */
+    }
     scope.replaceChildren();
     scope.dataset.mode = mode ? "private" : "public";
     document.getElementById("submit").textContent = mode
@@ -167,8 +191,8 @@ export function createLibrary({
       node(
         "p",
         tr(
-          "بحث بالمعنى داخل كتبك المحلية فقط. يُجهّز الفهرس الدلالي عند أول سؤال ويُحفظ على جهازك. النتائج نصوص موثقة للمراجعة، وليست فتوى مولّدة.",
-          "Semantic search only in your local books. The semantic index is prepared on the first question and saved on your device. Results are source passages for review, not a generated fatwa.",
+          "بحث داخل كتبك المحددة فقط: مطابقة نصية سريعة، ثم ترتيب بالمعنى للمقاطع المرشحة عند الحاجة. لا ينتظر السؤال فهرسة الكتاب كله بالنموذج.",
+          "Search only your selected books: fast text matching, then semantic ranking of candidate passages when needed. Queries no longer wait for neural indexing of the entire book.",
         ),
         "notice",
       ),
@@ -374,8 +398,8 @@ export function createLibrary({
         await refresh();
         changed();
         panel.querySelector("[role=status]").textContent = tr(
-          `حُفظ ${book.units.length} موضعًا، واختير الكتاب نطاقًا للبحث. اضغط «الانتقال للبحث في مكتبتي»؛ يُجهّز الفهرس الدلالي عند أول سؤال. اختر لغة الكتاب نفسها عند البحث.`,
-          `${book.units.length} passages saved; this book is now the search scope. Click “Search my library”; its semantic index is prepared on the first question. Select the book’s language when searching.`,
+          `حُفظ ${book.units.length} موضعًا، واختير الكتاب نطاقًا للبحث. اضغط «الانتقال للبحث في مكتبتي». يمكنك معاينة النص المستخرج أسفل بطاقة الكتاب. اختر لغة الكتاب نفسها عند البحث.`,
+          `${book.units.length} passages saved; this book is now the search scope. Click “Search my library”. You can inspect the extracted text in its book card. Select the book’s language when searching.`,
         );
       } catch (error) {
         const messages = {
@@ -439,6 +463,29 @@ export function createLibrary({
       card.append(rename);
       for (const book of own) {
         const row = node("article", "", "library-book");
+        const preview = node("details");
+        preview.append(
+          node(
+            "summary",
+            tr(
+              "معاينة النص المحفوظ والفهرسة",
+              "Inspect saved text and indexing",
+            ),
+          ),
+          node(
+            "p",
+            tr(
+              `اللغة: ${book.language} · ${book.units.length} موضعًا محفوظًا.`,
+              `Language: ${book.language} · ${book.units.length} saved passages.`,
+            ),
+          ),
+        );
+        for (const unit of book.units.slice(0, 3))
+          preview.append(
+            node("h5", unit.reference),
+            node("p", unit.text.slice(0, 1500), "excerpt"),
+          );
+        row.append(preview);
         if (book.extraction)
           row.append(node("p", extractionNote(book), "notice"));
         row.append(
@@ -510,7 +557,7 @@ export function createLibrary({
       result.append(node("p", errorText()));
       return result;
     }
-    const policy = classifyPolicy(question, getLanguage());
+    const policy = classifyLibraryPolicy(question, getLanguage());
     if (!["explain", "information", "qualified"].includes(policy)) {
       result.append(
         node(
@@ -536,10 +583,26 @@ export function createLibrary({
     }
     const hits = await run({
       type: "search",
-      books,
+      books: books.filter((book) => ids.includes(book.id)),
       question,
       scope: { language: getLanguage(), bookIds: ids },
     });
+    if (hits.searchInfo)
+      result.append(
+        node(
+          "p",
+          hits.searchInfo.mode === "lexical"
+            ? tr(
+                "استُرجع النص بمطابقة مباشرة دون تحميل نموذج الذكاء الاصطناعي.",
+                "Direct text match; no AI model download was needed.",
+              )
+            : tr(
+                `فُحص النص كاملًا بالكلمات، ورُتّب ${hits.searchInfo.examined} من ${hits.searchInfo.total} مقطعًا بالمعنى. قد تفوت صياغات لا تشترك مع المصدر في الكلمات.`,
+                `All text was scanned lexically; ${hits.searchInfo.examined} of ${hits.searchInfo.total} passages were ranked semantically. Wording without shared source terms may be missed.`,
+              ),
+          "notice",
+        ),
+      );
     result.append(
       node(
         "h2",
@@ -548,8 +611,8 @@ export function createLibrary({
       node(
         "p",
         tr(
-          "هذه نصوص مسترجعة بالمعنى من نطاقك المحدد. تُعرض المواضع الأصلية كاملة لحفظ السياق؛ راجع كفايتها للسؤال. لا يُولّد رَفّ فتوى من الكتب المضافة.",
-          "These passages were retrieved by meaning from your selected scope. Complete original passages preserve context; check whether they answer your question. Raff does not generate a fatwa from imported books.",
+          "هذه نصوص مسترجعة من نطاقك المحدد. تُعرض المواضع الأصلية كاملة لحفظ السياق؛ راجع كفايتها للسؤال. لا يُولّد رَفّ فتوى من الكتب المضافة.",
+          "These passages were retrieved from your selected scope. Complete original passages preserve context; check whether they answer your question. Raff does not generate a fatwa from imported books.",
         ),
         "notice",
       ),

@@ -1,4 +1,4 @@
-import { PagedEngine, checked } from "./paged-engine.mjs?v=0.12.0";
+import { PagedEngine, checked } from "./paged-engine.mjs?v=0.13.1";
 let engine,
   extractor,
   modelSetupMilliseconds = 0,
@@ -51,6 +51,13 @@ onmessage = async ({ data }) => {
           progress,
         );
       postMessage({ type: "ready" });
+      // Fetch the selected language's small text indexes while the reader types.
+      // No model download or vector preparation is triggered until needed.
+      void Promise.allSettled(
+        data.catalog
+          .filter((meta) => meta.language === language)
+          .map((meta) => engine.load(meta)),
+      );
       return;
     }
     if (data.type === "ask") {

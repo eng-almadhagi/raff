@@ -52,3 +52,53 @@ test("exact reference requests accept Arabic digits but not incidental numbers",
   assert.equal(directReference("answer 11789"), 11789);
   assert.equal(directReference("هل تجوز الصلاة 3 مرات"), null);
 });
+
+test("unspecified zakat amounts clarify without choosing a subtype", () => {
+  for (const q of [
+    "ما هو مقدار الزكاة",
+    "كم نسبة الزكاة؟",
+    "How much zakat should be paid?",
+  ])
+    assert.equal(route(q), "clarify-zakat");
+  for (const q of [
+    "ما مقدار زكاة النقود؟",
+    "ما مقدار زكاة الفطر؟",
+    "What is the zakat rate on gold?",
+  ])
+    assert.notEqual(route(q), "clarify-zakat");
+});
+
+test("library first-person logistics are searchable while personal rulings still refer", async () => {
+  const { classifyLibraryPolicy } = await import("../site/policy.mjs");
+  assert.equal(
+    classifyLibraryPolicy("كم كتاب أقدر أستعير وكم يوم أخليه عندي؟", "ar"),
+    "explain",
+  );
+  assert.equal(
+    classifyLibraryPolicy("أنا مريض وآخذ أدوية، هل أفطر غدًا؟", "ar"),
+    "refer",
+  );
+});
+test("zakat subtype conflicts do not leak into a general money query", async () => {
+  const { scopeConflict } = await import("../site/paged-engine.mjs");
+  assert.equal(
+    scopeConflict("ما مقدار زكاة النقود؟", {
+      title: "مقدار زكاة الفطر إذا أخرجت لحما",
+    }),
+    true,
+  );
+  assert.equal(
+    scopeConflict("ما مقدار زكاة النقود؟", { title: "كيفية الزكاة عن الماضي" }),
+    true,
+  );
+  assert.equal(
+    scopeConflict("كيف أخرج الزكاة عن الماضي؟", {
+      title: "كيفية الزكاة عن الماضي",
+    }),
+    false,
+  );
+  assert.equal(
+    scopeConflict("مقدار زكاة الفطر", { title: "مقدار زكاة الفطر" }),
+    false,
+  );
+});

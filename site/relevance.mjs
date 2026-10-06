@@ -1,4 +1,4 @@
-import { terms, normalize } from "./core.mjs";
+import { terms, normalize } from "./core.mjs?v=0.13.1";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
@@ -224,6 +224,27 @@ export function prepareSubjects(index, vocabulary) {
     title: new Set(intentTerms(u.title, vocabulary)),
     question: new Set(intentTerms(u.question || "", vocabulary)),
   }));
+  const frequencies = new Map();
+  for (const d of documents)
+    for (const t of d.title) frequencies.set(t, (frequencies.get(t) || 0) + 1);
+  return { documents, frequencies };
+}
+
+export function restoreSubjects(rows, count) {
+  if (!Array.isArray(rows) || rows.length !== count)
+    throw Error("Incomplete prepared subjects");
+  const documents = rows.map((row) => {
+    if (
+      !Array.isArray(row) ||
+      row.length !== 2 ||
+      row.some(
+        (tokens) =>
+          !Array.isArray(tokens) || tokens.some((t) => typeof t !== "string"),
+      )
+    )
+      throw Error("Invalid prepared subjects");
+    return { title: new Set(row[0]), question: new Set(row[1]) };
+  });
   const frequencies = new Map();
   for (const d of documents)
     for (const t of d.title) frequencies.set(t, (frequencies.get(t) || 0) + 1);

@@ -145,3 +145,50 @@ test("focused excerpts retain original text and a following exception paragraph"
   assert.equal(result.complete, true);
   assert.equal(result.text, text);
 });
+
+test("ambiguous zakat never downloads data or invokes the model", async () => {
+  globalThis.fetch = () => {
+    throw Error("must not fetch");
+  };
+  const engine = new PagedEngine(metas, vocabulary, () => {
+    throw Error("must not embed");
+  });
+  const result = await engine.ask("ما هو مقدار الزكاة", "ar", ["islamqa-ar"]);
+  assert.equal(result.kind, "clarify-zakat");
+  assert.equal(result.sources.length, 0);
+});
+
+test("concurrent index preparation shares one validated download", async () => {
+  const calls = fixture();
+  const engine = new PagedEngine(metas, vocabulary, () => []);
+  const [a, b] = await Promise.all([
+    engine.load(metas[0]),
+    engine.load(metas[0]),
+  ]);
+  assert.equal(a, b);
+  assert.equal(calls.filter((c) => c.endsWith("index.json")).length, 1);
+});
+test("a direct title and supported answer avoid model and vectors", async () => {
+  const u = {
+    ...unit("en"),
+    title: "Synthetic subject",
+    question: "Synthetic subject",
+    answer: "Synthetic subject includes an explicit condition.",
+    text: "Synthetic subject includes an explicit condition.",
+  };
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return new Response(
+      JSON.stringify(
+        url.endsWith("index.json") ? [{ ...u, shard: 0 }] : { [u.id]: u },
+      ),
+    );
+  };
+  const engine = new PagedEngine(metas, vocabulary, () => {
+    throw Error("must not embed");
+  });
+  const result = await engine.ask("Synthetic subject", "en", ["islamqa-en"]);
+  assert.equal(result.sources[0].citations[0].text, u.text);
+  assert.ok(calls.every((c) => !c.endsWith(".i8")));
+});

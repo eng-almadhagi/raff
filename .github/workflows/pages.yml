@@ -36,6 +36,7 @@ jobs:
           CONTENT_SHA256: ${{ inputs.content_sha256 }}
         run: python -m tools.fetch_pages_content --url "$CONTENT_URL" --sha256 "$CONTENT_SHA256"
       - run: python -m tools.assemble_pages
+      - run: node tools/build_subject_index.mjs _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,7 +1,34 @@
-import { libraryTerms } from "./library-core.mjs?v=0.12.0";
-import { libraryDB } from "./library-store.mjs?v=0.12.0";
+import { libraryTerms } from "./library-core.mjs?v=0.13.1";
+import { libraryDB } from "./library-store.mjs?v=0.13.1";
 
 const VERSION = "e5-q8-passages-v3";
+export function lexicalCandidates(books, question) {
+  const wanted = libraryTerms(question);
+  const rows = books.flatMap((book) =>
+    passageWindows(book).map((window, index) => ({
+      ...window,
+      index,
+      bookId: book.id,
+    })),
+  );
+  const frequency = new Map();
+  for (const row of rows) {
+    row.tokens = new Set(libraryTerms(row.text));
+    for (const term of wanted)
+      if (row.tokens.has(term))
+        frequency.set(term, (frequency.get(term) || 0) + 1);
+  }
+  for (const row of rows) {
+    const matched = wanted.filter((t) => row.tokens.has(t));
+    row.coverage = wanted.length ? matched.length / wanted.length : 0;
+    row.lexical =
+      matched.reduce(
+        (n, t) => n + Math.log(1 + rows.length / (frequency.get(t) || 1)),
+        0,
+      ) / Math.sqrt(1 + row.tokens.size / 80);
+  }
+  return rows.sort((a, b) => b.lexical - a.lexical);
+}
 let encoder;
 async function encode(texts, kind, progress) {
   if (!encoder) {
@@ -64,7 +91,19 @@ export function passageWindows(book) {
 
 export function selectSemanticPassages(rows, question) {
   const query = libraryTerms(question);
-  const ordered = [...rows].sort((a, b) => b.similarity - a.similarity);
+  const registration =
+    /حجز|تسجيل|اشتراك|عضوية|عضويه|[أا]سجل|\b(?:register|registration|booking|reservation|membership)\b/iu.test(
+      question,
+    );
+  const ordered = rows
+    .filter(
+      (row) =>
+        !registration ||
+        /حجز|تسجيل|اشتراك|عضوية|عضويه|استمار|\b(?:register|registration|booking|reservation|membership|application)\b/iu.test(
+          row.text,
+        ),
+    )
+    .sort((a, b) => b.similarity - a.similarity);
   const best = ordered[0]?.similarity || 0;
   const scored = ordered
     .slice(0, 40)
@@ -119,10 +158,54 @@ export async function semanticLibrarySearch(books, question, scope, progress) {
     (b) => scope.bookIds.includes(b.id) && b.language === scope.language,
   );
   if (!selected.length) return [];
+  const ranked = lexicalCandidates(selected, question);
+  const wanted = libraryTerms(question);
+  const strongest = ranked[0];
+  const nextIndependent = ranked.find(
+    (r) =>
+      r.bookId !== strongest?.bookId ||
+      !r.unitIds.some((id) => strongest.unitIds.includes(id)),
+  );
+  const strongExact =
+    strongest &&
+    wanted.length >= 2 &&
+    strongest.coverage === 1 &&
+    (!nextIndependent || strongest.lexical >= nextIndependent.lexical * 1.35);
+  const hydrate = (row) => {
+    const book = selected.find((b) => b.id === row.bookId);
+    const units = book.units.filter((u) => row.unitIds.includes(u.id));
+    return {
+      bookId: book.id,
+      title: book.title,
+      author: book.author,
+      reference: units.map((u) => u.reference).join(" / "),
+      heading: "",
+      text: units.map((u) => u.text).join("\n\n"),
+    };
+  };
+  if (strongExact)
+    return Object.assign([hydrate(strongest)], {
+      searchInfo: {
+        mode: "lexical",
+        total: ranked.length,
+        examined: ranked.length,
+      },
+    });
+  // Scan all text lexically; bound new neural work instead of blocking on a whole-book index.
+  let candidates = ranked.slice(0, 24);
+  if (!ranked.some((r) => r.lexical > 0) && ranked.length > 24) {
+    candidates = Array.from(
+      { length: Math.min(24, ranked.length) },
+      (_, i) =>
+        ranked[Math.floor((i * ranked.length) / Math.min(24, ranked.length))],
+    );
+  }
   const queryVector = (await encode([question], "query", progress))[0];
   const rows = [];
   for (const book of selected) {
     const windows = passageWindows(book);
+    const chosen = candidates.filter((row) => row.bookId === book.id);
+    if (!chosen.length) continue;
     let cached = await libraryDB("get", "vectors", book.id);
     if (
       !cached ||
@@ -135,18 +218,22 @@ export async function semanticLibrarySearch(books, question, scope, progress) {
         count: windows.length,
         vectors: [],
       };
-    for (let i = cached.vectors.length; i < windows.length; i += 8) {
-      progress("index", { title: book.title, done: i, total: windows.length });
+    const missing = chosen.filter((row) => !cached.vectors[row.index]);
+    for (let i = 0; i < missing.length; i += 8) {
+      progress("index", { title: book.title, done: i, total: missing.length });
       const vectors = await encode(
-        windows.slice(i, i + 8).map((w) => w.text),
+        missing.slice(i, i + 8).map((row) => row.text),
         "passage",
         progress,
       );
-      cached.vectors.push(...vectors);
+      missing.slice(i, i + 8).forEach((row, j) => {
+        cached.vectors[row.index] = vectors[j];
+      });
       // Checkpoint each batch; interrupted indexing resumes, without rewriting the book or its shelf.
       await libraryDB("put", "vectors", cached);
     }
-    for (let i = 0; i < windows.length; i++) {
+    for (const candidate of chosen) {
+      const i = candidate.index;
       const similarity = queryVector.reduce(
         (sum, value, k) => sum + value * cached.vectors[i][k],
         0,
@@ -155,17 +242,11 @@ export async function semanticLibrarySearch(books, question, scope, progress) {
     }
   }
   progress("search");
-  return selectSemanticPassages(rows, question).map((row) => {
-    const book = selected.find((b) => b.id === row.bookId);
-    const units = book.units.filter((u) => row.unitIds.includes(u.id));
-    return {
-      bookId: book.id,
-      title: book.title,
-      author: book.author,
-      reference: units.map((u) => u.reference).join(" / "),
-      heading: "",
-      text: units.map((u) => u.text).join("\n\n"),
-      similarity: row.similarity,
-    };
+  return Object.assign(selectSemanticPassages(rows, question).map(hydrate), {
+    searchInfo: {
+      mode: "hybrid",
+      total: ranked.length,
+      examined: candidates.length,
+    },
   });
 }
