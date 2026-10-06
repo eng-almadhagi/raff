@@ -1,8 +1,8 @@
 const connect = () =>
   new Promise((resolve, reject) => {
-    const request = indexedDB.open("raff-personal-library", 2);
+    const request = indexedDB.open("raff-personal-library", 3);
     request.onupgradeneeded = () => {
-      for (const name of ["shelves", "books", "vectors"]) {
+      for (const name of ["shelves", "books", "vectors", "settings"]) {
         if (!request.result.objectStoreNames.contains(name))
           request.result.createObjectStore(name, { keyPath: "id" });
       }

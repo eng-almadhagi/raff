@@ -3,12 +3,12 @@ import {
   evidence,
   normalize,
   focusedPreview,
-} from "./core.mjs?v=0.15.1";
+} from "./core.mjs?v=0.16.0";
 import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.15.1";
+} from "./policy.mjs?v=0.16.0";
 import {
   prepareSubjects,
   restoreSubjects,
@@ -16,7 +16,7 @@ import {
   subjectMatch,
   answerSupportsQuestion,
   isRelatedCase,
-} from "./relevance.mjs?v=0.15.1";
+} from "./relevance.mjs?v=0.16.0";
 
 export const bucket = (text) => {
   let h = 0;

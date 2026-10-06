@@ -1,47 +1,881 @@
-import { libraryDB } from "./library-store.mjs?v=0.15.1";
+import {
+  LibraryVault,
+  bookFingerprint,
+  encodeBackup,
+  decodeBackup,
+  mergeSnapshot,
+  MAX_BACKUP_BYTES,
+} from "./library-vault.mjs?v=0.16.0";
 import {
   classifyLibraryPolicy,
   policyMessages,
   clarificationChoices,
-} from "./policy.mjs?v=0.15.1";
+} from "./policy.mjs?v=0.16.0";
 
 export function createLibrary({
   panel,
   scope,
-  changed,
   navigate,
-  getLanguage,
-  selectQuestion,
+  getLanguage: interfaceLanguage,
 }) {
+  const vault = new LibraryVault();
   let shelves = [],
     books = [],
-    mode = false,
-    scopeType = "all",
-    chosen = new Set(),
-    available = false,
-    importing = false;
+    importing = false,
+    searching = false,
+    epoch = 0,
+    privateLanguage = interfaceLanguage(),
+    chosen = new Set();
+  const getLanguage = () => privateLanguage;
+  const tr = (ar, en) => (getLanguage() === "ar" ? ar : en);
+  const node = (tag, text, cls) => {
+    const n = document.createElement(tag);
+    if (text) n.textContent = text;
+    if (cls) n.className = cls;
+    return n;
+  };
+  const button = (text, fn) => {
+    const b = node("button", text);
+    b.type = "button";
+    b.onclick = fn;
+    return b;
+  };
+  const input = (form, label, type = "text") => {
+    const wrap = node("label", label),
+      field = node("input");
+    field.type = type;
+    wrap.append(field);
+    form.append(wrap);
+    return field;
+  };
+  const errorText = (error) => {
+    const messages = {
+      "vault-conflict": [
+        "تغيرت المكتبة في نافذة أخرى. أعد ربط المجلد أو افتح الموقع مجددًا قبل إعادة الحفظ؛ لم نستبدل التغييرات الأحدث.",
+        "The library changed in another tab. Relink or reopen before saving; newer changes were not overwritten.",
+      ],
+      "vault-busy": [
+        "عملية حفظ أخرى قيد التنفيذ. أعد المحاولة بعد انتهائها.",
+        "Another save is in progress. Retry after it finishes.",
+      ],
+      "vault-permission": [
+        "يلزم تجديد إذن المجلد. كتبك لم تُحذف؛ اضغط إعادة السماح بالوصول.",
+        "Folder permission is required. Your books were not deleted; renew access.",
+      ],
+      "vault-recovery": [
+        "وجدنا ملفات محفوظة دون فهرس صالح. لم ننشئ مكتبة فارغة فوقها. أعد ربط المجلد الصحيح أو استعد نسخة احتياطية.",
+        "Saved files exist without a valid manifest. Nothing was overwritten. Relink the correct folder or restore a backup.",
+      ],
+      "vault-version": [
+        "إصدار النسخة غير مدعوم. لم تتغير المكتبة الحالية.",
+        "Unsupported backup version. Your current library is unchanged.",
+      ],
+      "vault-invalid": [
+        "بيانات المكتبة غير صالحة. لم نستبدل مكتبتك بها.",
+        "Invalid library data. Your library was not replaced.",
+      ],
+      "vault-checksum": [
+        "فشل التحقق من سلامة النسخة. لم تُستورد.",
+        "Backup integrity check failed. It was not imported.",
+      ],
+      "vault-verify": [
+        "لم يمكن تأكيد القراءة بعد الحفظ. لم نعلن الكتاب جاهزًا؛ أعد المحاولة.",
+        "Read-back verification failed. The book was not marked ready; retry.",
+      ],
+      "vault-size": [
+        "تجاوزت النسخة حد 150 MB. صدّر مكتبة أصغر.",
+        "The backup exceeds the 150 MB limit. Use a smaller library.",
+      ],
+      "document-no-text": [
+        "الملف لا يحتوي نصًا قابلًا للاستخراج. الصور تحتاج OCR خارج الموقع.",
+        "No extractable text. Scans require external OCR.",
+      ],
+      "document-password": [
+        "الملف محمي بكلمة مرور. أضف نسخة نصية غير محمية مسموحة لك.",
+        "Password-protected document. Use an authorized unprotected text copy.",
+      ],
+      "document-limit": [
+        "تجاوز الملف حدود المعالجة. قسّمه إلى أجزاء أصغر.",
+        "Document processing limit exceeded. Split it into smaller parts.",
+      ],
+      "document-timeout": [
+        "انتهت مهلة المعالجة. لم يُضف الملف؛ أعد المحاولة بملف أصغر.",
+        "Processing timed out. The file was not added; retry with a smaller file.",
+      ],
+      "document-invalid": [
+        "تعذر قراءة الملف؛ أعد حفظه من برنامجه الأصلي ثم أعد المحاولة.",
+        "Could not read the document. Save it again in its original application and retry.",
+      ],
+      QuotaExceededError: [
+        "مساحة التخزين غير كافية. وفر مساحة ثم أعد المحاولة؛ الكتب السابقة باقية.",
+        "Storage is full. Free space and retry; existing books are retained.",
+      ],
+      NotAllowedError: [
+        "لم يُمنح إذن القراءة والكتابة. أعد السماح بالمجلد.",
+        "Read/write permission was not granted. Renew folder access.",
+      ],
+      NotFoundError: [
+        "تعذر العثور على المجلد أو ملفاته. ربما نُقل؛ أعد ربطه.",
+        "The folder or its files could not be found. It may have moved; relink it.",
+      ],
+      SecurityError: [
+        "منع المتصفح الوصول إلى المجلد. افتح الموقع عبر HTTPS وفي نافذة عادية، أو استخدم الحفظ داخل المتصفح.",
+        "The browser blocked folder access. Use HTTPS in a regular window, or browser storage.",
+      ],
+      NoModificationAllowedError: [
+        "المجلد أو الملف غير قابل للكتابة الآن. تحقق من صلاحية الكتابة ومن أنه غير مقفل ثم أعد المحاولة.",
+        "The folder or file is not writable. Check permissions and file locks, then retry.",
+      ],
+      AbortError: [
+        "أُلغي اختيار المجلد أو العملية. لم تتغير المكتبة.",
+        "The picker or operation was cancelled. The library is unchanged.",
+      ],
+    };
+    const msg = messages[error?.message] || messages[error?.name];
+    return msg
+      ? tr(...msg)
+      : tr(
+          "تعذرت العملية. لم نعلن نجاح الحفظ. تحقق من المجلد ومساحته وصيغة الملف وأعد المحاولة.",
+          "Operation failed; no save success was reported. Check folder access, space and file format, then retry.",
+        );
+  };
+  const extractionNote = (book) =>
+    book.extraction
+      ? tr(
+          "نص مستخرج آليًا؛ راجع ترتيبه في الأصل. الصور لا تُفهرس.",
+          "Automatically extracted text; check its order in the original. Images are not indexed.",
+        ) +
+        (book.extraction.pagesWithoutText?.length
+          ? tr(" صفحات بلا نص: ", " Pages without text: ") +
+            book.extraction.pagesWithoutText.join(", ")
+          : "")
+      : "";
+  const toolbar = node("div", "", "library-toolbar"),
+    heading = node("h2"),
+    maximize = button("", () => {
+      panel.classList.toggle("library-expanded");
+      renderLabels();
+    }),
+    close = button("", () => {
+      panel.classList.remove("library-expanded");
+      renderLabels();
+      navigate("ask");
+    });
+  toolbar.append(heading, maximize, close);
+  const notice = node("p", "", "notice"),
+    message = node("p");
+  message.setAttribute("role", "status");
+  message.id = "library-save-status";
+  const manager = node("details", "", "library-manager"),
+    summary = node("summary"),
+    management = node("div");
+  manager.append(summary, management);
+  const languages = node("div", "", "choices"),
+    selection = node("div", "", "library-selection");
+  const form = node("form", "", "library-search-form"),
+    qlabel = node("label"),
+    questionInput = node("textarea");
+  questionInput.id = "library-question";
+  questionInput.rows = 3;
+  questionInput.maxLength = 600;
+  questionInput.required = true;
+  qlabel.htmlFor = questionInput.id;
+  const submit = node("button");
+  submit.type = "submit";
+  submit.id = "library-search-submit";
+  const statusRow = node("div", "", "search-status"),
+    spinner = node("span", "", "search-spinner"),
+    statusText = node("p"),
+    statusDetail = node("p", "", "search-detail"),
+    results = node("section");
+  spinner.hidden = true;
+  spinner.setAttribute("aria-hidden", "true");
+  statusRow.setAttribute("role", "status");
+  statusRow.append(spinner, statusText);
+  results.id = "library-results";
+  results.setAttribute("aria-live", "polite");
+  form.append(qlabel, questionInput, submit);
+  panel.replaceChildren(
+    toolbar,
+    notice,
+    message,
+    manager,
+    languages,
+    selection,
+    form,
+    statusRow,
+    statusDetail,
+    results,
+  );
+  scope.replaceChildren();
+  scope.hidden = true;
   try {
     const saved = JSON.parse(
-      localStorage.getItem("raff-library-scope") || "null",
+      localStorage.getItem("raff-private-search") || "null",
     );
-    if (
-      saved &&
-      ["all", "book", "shelf", "shelves"].includes(saved.scopeType) &&
-      Array.isArray(saved.chosen)
-    ) {
-      mode = saved.mode === true;
-      scopeType = saved.scopeType;
-      chosen = new Set(saved.chosen.filter((id) => typeof id === "string"));
+    if (saved) {
+      questionInput.value = saved.question || "";
+      chosen = new Set(saved.chosen || []);
+      if (["ar", "en"].includes(saved.language))
+        privateLanguage = saved.language;
     }
-  } catch {
-    /* Optional preference; books remain in IndexedDB. */
+  } catch {}
+  function remember() {
+    try {
+      localStorage.setItem(
+        "raff-private-search",
+        JSON.stringify({
+          question: questionInput.value,
+          chosen: [...chosen],
+          language: privateLanguage,
+        }),
+      );
+    } catch {}
+  }
+  questionInput.oninput = remember;
+  function invalidate() {
+    epoch++;
+    cancelSearch();
+    results.replaceChildren();
+    statusText.textContent = "";
+    statusDetail.textContent = "";
+    remember();
+  }
+  function scopeIds() {
+    return books
+      .filter((b) => b.language === getLanguage() && chosen.has(b.id))
+      .map((b) => b.id);
+  }
+  function renderLabels() {
+    panel.dir = getLanguage() === "ar" ? "rtl" : "ltr";
+    heading.textContent = tr(
+      "مكتبتي — رفوف الباحث",
+      "My library — Research shelves",
+    );
+    summary.textContent = tr(
+      "⊕ إضافة رف وإدارة الحفظ والكتب",
+      "⊕ Add a shelf, storage and books",
+    );
+    maximize.textContent = panel.classList.contains("library-expanded")
+      ? tr("تصغير الشاشة", "Restore window")
+      : tr("تكبير الشاشة", "Expand window");
+    maximize.setAttribute(
+      "aria-pressed",
+      String(panel.classList.contains("library-expanded")),
+    );
+    close.textContent = tr(
+      "إغلاق والعودة للرئيسية",
+      "Close and return to public search",
+    );
+    qlabel.textContent = tr(
+      "سؤالك في الكتب المحددة",
+      "Question for the selected books",
+    );
+    submit.textContent = tr("بحث في مكتبتي", "Search my library");
+    submit.disabled = searching || importing || !vault.ready;
+    spinner.hidden = !searching;
+    form.setAttribute("aria-busy", String(searching));
+    notice.textContent =
+      vault.mode === "folder"
+        ? tr(
+            "ستُحفظ بيانات مكتبتك في مجلد Raff الذي اخترته على جهازك. الاسم المتاح للمتصفح: Raff. قد يلزم تجديد الإذن بعد إعادة الفتح.",
+            "Your library data is saved in your chosen Raff folder on this device. Browser-visible name: Raff. Permission may need renewal after reopening.",
+          )
+        : tr(
+            "الحفظ داخل هذا المتصفح — ليس مجلدًا ظاهرًا على الجهاز. مسح بيانات الموقع أو التصفح الخاص قد يفقد النسخة؛ صدّر نسخة احتياطية.",
+            "Saved inside this browser — not a visible device folder. Clearing site data or private browsing may lose it; export a backup.",
+          );
+    languages.replaceChildren();
+    for (const [lang, label] of [
+      ["ar", "العربية"],
+      ["en", "English"],
+    ]) {
+      const b = button(label, () => {
+        if (privateLanguage === lang) return;
+        privateLanguage = lang;
+        message.replaceChildren();
+        invalidate();
+        render();
+      });
+      b.setAttribute("aria-pressed", String(privateLanguage === lang));
+      languages.append(b);
+    }
+  }
+  function renderSelection() {
+    selection.replaceChildren(
+      node("h3", tr("الكتب التي سيُبحث فيها", "Books to search")),
+    );
+    const controls = node("div", "", "choices");
+    controls.append(
+      button(tr("تحديد جميع الكتب", "Select all books"), () => {
+        chosen = new Set(
+          books.filter((b) => b.language === getLanguage()).map((b) => b.id),
+        );
+        invalidate();
+        renderSelection();
+      }),
+      button(tr("إلغاء التحديد", "Clear selection"), () => {
+        chosen.clear();
+        invalidate();
+        renderSelection();
+      }),
+    );
+    for (const s of shelves)
+      controls.append(
+        button(s.title, () => {
+          const ids = books
+            .filter((b) => b.shelfId === s.id && b.language === getLanguage())
+            .map((b) => b.id);
+          const all = ids.length && ids.every((id) => chosen.has(id));
+          ids.forEach((id) => (all ? chosen.delete(id) : chosen.add(id)));
+          invalidate();
+          renderSelection();
+        }),
+      );
+    selection.append(controls);
+    for (const b of books.filter((b) => b.language === getLanguage())) {
+      const wrap = node("label", "", "library-book-choice"),
+        check = node("input");
+      check.type = "checkbox";
+      check.checked = chosen.has(b.id);
+      check.onchange = () => {
+        check.checked ? chosen.add(b.id) : chosen.delete(b.id);
+        invalidate();
+        renderSelection();
+      };
+      wrap.append(
+        check,
+        document.createTextNode(
+          b.title +
+            " — " +
+            (shelves.find((s) => s.id === b.shelfId)?.title || ""),
+        ),
+      );
+      selection.append(wrap);
+    }
+    selection.append(
+      node(
+        "p",
+        tr(
+          `النطاق: ${scopeIds().length} كتاب. لا تُستخدم المصادر العامة هنا.`,
+          `Scope: ${scopeIds().length} books. Public sources are never used here.`,
+        ),
+      ),
+    );
+  }
+  function refresh() {
+    shelves = vault.snapshot.shelves;
+    books = vault.snapshot.books;
+    chosen = new Set(
+      [...chosen].filter((id) => books.some((b) => b.id === id)),
+    );
+    render();
+  }
+  async function operation(fn) {
+    if (importing || searching) return;
+    importing = true;
+    renderLabels();
+    try {
+      await fn();
+      refresh();
+    } catch (e) {
+      message.textContent = errorText(e);
+      message.append(
+        button(tr("إعادة المحاولة", "Retry"), () => operation(fn)),
+      );
+      refresh();
+    } finally {
+      importing = false;
+      renderLabels();
+    }
+  }
+  function download(text, name) {
+    const url = URL.createObjectURL(
+      new Blob([text], { type: "application/json" }),
+    );
+    const a = node("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function renderManagement() {
+    management.replaceChildren();
+    management.append(
+      node("h3", tr("مكان الحفظ", "Storage location")),
+      node(
+        "p",
+        tr(
+          "تغيير المجلد لا ينقل المكتبة القديمة؛ تبقى في مكانها. لن نستبدلها بمكتبة فارغة عند انقطاع الإذن.",
+          "Changing folders does not move the old library; it remains in place. Missing permission never replaces it with an empty library.",
+        ),
+      ),
+    );
+    const storageControls = node("div", "", "choices");
+    if (
+      typeof window.showDirectoryPicker === "function" &&
+      window.isSecureContext
+    )
+      storageControls.append(
+        button(
+          tr(
+            "تحديد مجلد حفظ بيانات رف / إعادة ربطه",
+            "Choose or relink Raff storage folder",
+          ),
+          () => {
+            if (importing || searching) return;
+            // Invoke the picker directly from the click, before any asynchronous work.
+            const picked = window.showDirectoryPicker({
+              id: "raff-library",
+              mode: "readwrite",
+            });
+            operation(async () => {
+              const parent = await picked;
+              await vault.chooseFolder(parent);
+              chosen.clear();
+              invalidate();
+              message.textContent = tr(
+                "رُبط مجلد Raff. المكتبة السابقة باقية في مكانها.",
+                "Raff folder linked. The previous library remains in its original location.",
+              );
+            });
+          },
+        ),
+      );
+    else
+      management.append(
+        node(
+          "p",
+          tr(
+            "اختيار مجلد غير مدعوم في هذا المتصفح. استخدم الحفظ داخل المتصفح والنسخ الاحتياطية، أو افتح الموقع بمتصفح يدعم اختيار المجلد.",
+            "Folder picking is unavailable here. Use browser storage and backups, or a browser that supports folder picking.",
+          ),
+        ),
+      );
+    if (vault.handle)
+      storageControls.append(
+        button(
+          tr("إعادة السماح بالوصول إلى مجلد رف", "Renew access to Raff folder"),
+          () =>
+            operation(async () => {
+              await vault.reconnect(true);
+              invalidate();
+              message.textContent = tr(
+                "استعيد الوصول والكتب المحفوظة.",
+                "Access and saved books restored.",
+              );
+            }),
+        ),
+      );
+    storageControls.append(
+      button(tr("الحفظ داخل هذا المتصفح", "Save inside this browser"), () =>
+        operation(async () => {
+          await vault.useBrowser();
+          invalidate();
+          const persistent = await navigator.storage?.persist?.();
+          message.textContent = persistent
+            ? tr(
+                "طلب التخزين المستمر مقبول، لكنه ليس ضمانًا ضد مسح البيانات.",
+                "Persistent storage granted; this does not protect against clearing site data.",
+              )
+            : tr(
+                "الحفظ داخل المتصفح متاح. احتفظ بنسخة احتياطية؛ التخزين المستمر غير مضمون.",
+                "Browser storage is available. Keep a backup; persistence is not guaranteed.",
+              );
+        }),
+      ),
+    );
+    management.append(storageControls);
+    if (vault.handle)
+      management.append(
+        button(
+          tr(
+            "استعادة نسخة محفوظة في مجلد Raff",
+            "Recover a saved generation in Raff",
+          ),
+          () =>
+            operation(async () => {
+              await vault.recoverPrevious();
+              invalidate();
+              message.textContent = tr(
+                "استعيدت نسخة متحقق منها؛ النسخ الأخرى لا تزال محفوظة في المجلد.",
+                "Previous verified generation restored; other snapshots remain in the folder.",
+              );
+            }),
+        ),
+      );
+    if (!vault.ready) return;
+    const backupControls = node("div", "", "choices");
+    backupControls.append(
+      button(tr("تصدير نسخة احتياطية كاملة", "Export complete backup"), () =>
+        operation(async () => {
+          download(await vault.export(), "raff-library-backup.json");
+          message.textContent = tr(
+            "جُهزت النسخة للتنزيل. تحقق من اكتمال التنزيل في متصفحك.",
+            "Backup prepared for download. Check that the browser download completed.",
+          );
+        }),
+      ),
+    );
+    const restoreLabel = node(
+        "label",
+        tr(
+          "استيراد نسخة احتياطية (دمج دون حذف الكتب)",
+          "Import backup (merge, keep existing books)",
+        ),
+      ),
+      restore = node("input");
+    restore.type = "file";
+    restore.accept = ".json";
+    restore.onchange = () =>
+      operation(async () => {
+        const f = restore.files[0];
+        if (!f) return;
+        if (f.size > MAX_BACKUP_BYTES) throw Error("vault-size");
+        const incoming = await decodeBackup(await f.text());
+        const merged = await mergeSnapshot(vault.snapshot, incoming);
+        await vault.save(merged.snapshot);
+        await vault.restoreVectors();
+        invalidate();
+        message.textContent = tr(
+          `تم حفظ النسخة والتحقق منها. كتب مكررة لم تُضف: ${merged.duplicates}.`,
+          `Backup saved and verified. Duplicate books skipped: ${merged.duplicates}.`,
+        );
+      });
+    restoreLabel.append(restore);
+    backupControls.append(restoreLabel);
+    management.append(backupControls);
+    const shelfForm = node("form", "", "library-form"),
+      shelfName = input(shelfForm, tr("اسم الرف الجديد", "New shelf name"));
+    shelfName.required = true;
+    shelfName.maxLength = 100;
+    const create = node("button", tr("+ إنشاء رف", "+ Create shelf"));
+    create.type = "submit";
+    shelfForm.append(create);
+    shelfForm.onsubmit = (e) => {
+      e.preventDefault();
+      operation(async () => {
+        const title = shelfName.value.trim();
+        if (!title) return;
+        await vault.save({
+          ...vault.snapshot,
+          shelves: [...shelves, { id: crypto.randomUUID(), title }],
+        });
+        message.textContent = tr(
+          "حُفظ الرف وتحققنا من قراءته.",
+          "Shelf saved and read-back verified.",
+        );
+      });
+    };
+    management.append(shelfForm);
+    const add = node("form", "", "library-form");
+    add.append(
+      node("h3", tr("+ إضافة كتاب أو عدة كتب", "+ Add one or more books")),
+    );
+    const title = input(
+      add,
+      tr(
+        "عنوان الكتاب (اختياري؛ للملف الواحد)",
+        "Book title (optional; single file)",
+      ),
+    );
+    title.maxLength = 200;
+    const author = input(add, tr("المؤلف / المصدر", "Author / source"));
+    author.maxLength = 200;
+    const shelfLabel = node("label", tr("الرف", "Shelf")),
+      target = node("select");
+    target.required = true;
+    for (const s of shelves) {
+      const o = node("option", s.title);
+      o.value = s.id;
+      target.append(o);
+    }
+    shelfLabel.append(target);
+    add.append(shelfLabel);
+    const langLabel = node("label", tr("لغة الكتب", "Books language")),
+      lang = node("select");
+    for (const [value, label] of [
+      ["ar", "العربية"],
+      ["en", "English"],
+    ]) {
+      const o = node("option", label);
+      o.value = value;
+      lang.append(o);
+    }
+    lang.value = privateLanguage;
+    langLabel.append(lang);
+    add.append(langLabel);
+    const files = input(
+      add,
+      tr(
+        "ملفات نصية: PDF / DOCX / TXT / MD / JSON",
+        "Text files: PDF / DOCX / TXT / MD / JSON",
+      ),
+      "file",
+    );
+    files.accept = ".txt,.md,.json,.pdf,.docx";
+    files.multiple = true;
+    files.required = true;
+    add.append(
+      node(
+        "p",
+        tr(
+          "PDF وDOCX حتى 20 MB لكل ملف؛ TXT وMD وJSON حتى 5 MB. ملفات DOC القديمة يجب تحويلها إلى DOCX. الصور والمسح الضوئي لا يعالجان كنص. PDF: رقم صفحة الملف؛ Word: رقم الفقرة. راجع النص المستخرج.",
+          "PDF/DOCX up to 20 MB each; TXT/MD/JSON up to 5 MB. Convert old DOC to DOCX. Scanned images are not text. PDF references use file pages; Word uses paragraphs. Check extracted text.",
+        ),
+      ),
+    );
+    const addButton = node(
+      "button",
+      tr("استيراد ومعالجة وحفظ", "Import, process and save"),
+    );
+    addButton.type = "submit";
+    addButton.disabled = !shelves.length;
+    add.append(addButton);
+    add.onsubmit = (e) => {
+      e.preventDefault();
+      const selected = [...files.files],
+        targetId = target.value,
+        language = lang.value;
+      const importBatch = async () => {
+        const completed = [],
+          duplicates = [];
+        const failed = [];
+        for (const file of selected) {
+          try {
+            message.textContent = tr(
+              `جارٍ الاستيراد: ${file.name}`,
+              `Importing: ${file.name}`,
+            );
+            const binary = /\.(pdf|docx)$/i.test(file.name);
+            if (file.size > (binary ? 20_000_000 : 5_000_000))
+              throw Error("document-limit");
+            const data = binary
+              ? { buffer: await file.arrayBuffer() }
+              : { content: await file.text() };
+            message.textContent = tr(
+              `جارٍ المعالجة: ${file.name}`,
+              `Processing: ${file.name}`,
+            );
+            const book = await run({
+              type: "import",
+              payload: {
+                ...data,
+                filename: file.name,
+                title:
+                  selected.length === 1 && title.value.trim()
+                    ? title.value.trim()
+                    : file.name.replace(/\.[^.]+$/, ""),
+                author: author.value,
+                language,
+                shelfId: targetId,
+              },
+            });
+            const fingerprint = await bookFingerprint(book);
+            let duplicate = false;
+            for (const b of vault.snapshot.books)
+              if (
+                (b.fingerprint || (await bookFingerprint(b))) === fingerprint
+              ) {
+                duplicate = true;
+                break;
+              }
+            if (duplicate) {
+              duplicates.push(file.name);
+              continue;
+            }
+            message.textContent = tr(
+              `جارٍ الحفظ والتحقق: ${file.name}`,
+              `Saving and verifying: ${file.name}`,
+            );
+            await vault.save({
+              ...vault.snapshot,
+              books: [...vault.snapshot.books, { ...book, fingerprint }],
+            });
+            completed.push(book.id);
+          } catch (error) {
+            failed.push(`${file.name}: ${errorText(error)}`);
+          }
+        }
+        if (completed.length) {
+          privateLanguage = language;
+          chosen = new Set(completed);
+          invalidate();
+        }
+        message.textContent =
+          tr(
+            `حُفظ وتحقق ${completed.length} كتاب. مكرر لم يُضف: ${duplicates.length}.`,
+            `Saved and verified ${completed.length} books. Duplicates skipped: ${duplicates.length}.`,
+          ) +
+          (failed.length ? "\n" + failed.join("\n") : "") +
+          (duplicates.length ? "\n" + duplicates.join("، ") : "");
+        if (failed.length)
+          message.append(
+            button(tr("إعادة محاولة الاستيراد", "Retry import"), () =>
+              operation(importBatch),
+            ),
+          );
+        if (completed.length) {
+          const open = button(tr("فتح مكتبتي", "Open my library"), () => {
+            manager.open = false;
+            questionInput.focus();
+          });
+          message.append(document.createTextNode(" "), open);
+        }
+      };
+      operation(importBatch);
+    };
+    management.append(add);
+    for (const shelf of shelves) {
+      const card = node("section", "", "library-shelf");
+      card.append(node("h3", shelf.title));
+      const rename = node("form", "", "library-form"),
+        name = input(rename, tr("تعديل اسم الرف", "Rename shelf"));
+      name.value = shelf.title;
+      name.maxLength = 100;
+      name.required = true;
+      const save = node("button", tr("حفظ الاسم", "Save name"));
+      save.type = "submit";
+      rename.append(save);
+      rename.onsubmit = (e) => {
+        e.preventDefault();
+        operation(async () => {
+          await vault.save({
+            ...vault.snapshot,
+            shelves: shelves.map((s) =>
+              s.id === shelf.id ? { ...s, title: name.value.trim() } : s,
+            ),
+          });
+        });
+      };
+      card.append(rename);
+      for (const book of books.filter((b) => b.shelfId === shelf.id)) {
+        const row = node("article", "", "library-book");
+        row.append(
+          node("h4", book.title),
+          node(
+            "p",
+            `${book.language} · ${book.units.length} ${tr("موضع محفوظ ومفهرس نصيًا", "saved, text-indexed passages")}`,
+          ),
+        );
+        const preview = node("details");
+        preview.append(
+          node("summary", tr("معاينة النص المحفوظ", "Inspect saved text")),
+        );
+        for (const u of book.units.slice(0, 3))
+          preview.append(
+            node("h5", u.reference),
+            node("p", u.text.slice(0, 1500), "excerpt"),
+          );
+        row.append(preview);
+        if (book.extraction)
+          row.append(node("p", extractionNote(book), "notice"));
+        const label = node("label", tr("نقل إلى رف", "Move to shelf")),
+          move = node("select");
+        for (const s of shelves) {
+          const o = node("option", s.title);
+          o.value = s.id;
+          move.append(o);
+        }
+        move.value = book.shelfId;
+        move.onchange = () =>
+          operation(async () => {
+            await vault.save({
+              ...vault.snapshot,
+              books: books.map((b) =>
+                b.id === book.id ? { ...b, shelfId: move.value } : b,
+              ),
+            });
+            invalidate();
+          });
+        label.append(move);
+        row.append(label);
+        card.append(row);
+      }
+      management.append(card);
+    }
+    management.append(
+      node(
+        "p",
+        tr(
+          "المعالجة والبحث يعملان على جهازك. لا تُرسل الأسئلة أو الكتب لخادم. قد يحتاج تنزيل ملفات الموقع ونموذج البحث الحالي إلى الإنترنت أول مرة؛ لا نعد بتشغيل كامل بلا إنترنت. تحفظ الفهارس النصية فورًا، وتُحفظ التمثيلات الدلالية المستخدمة بعد البحث لإعادة استخدامها.",
+          "Processing and search run on this device. Questions and books are not sent to a server. Site assets and the existing semantic model may need internet on first download; complete offline operation is not promised. Text indexes are saved immediately; semantic vectors used by search are saved for reuse.",
+        ),
+      ),
+    );
+  }
+  function render() {
+    renderLabels();
+    renderSelection();
+    renderManagement();
+  }
+  async function executeSearch() {
+    if (searching || importing) return;
+    if (!vault.ready) {
+      statusText.textContent = errorText(Error("vault-permission"));
+      return;
+    }
+    if (!scopeIds().length) {
+      statusText.textContent = tr(
+        "حدد كتابًا واحدًا أو أكثر قبل البحث.",
+        "Select one or more books before searching.",
+      );
+      return;
+    }
+    const question = questionInput.value.trim();
+    if (question.length < 2) return;
+    searching = true;
+    const current = ++epoch;
+    remember();
+    results.replaceChildren();
+    statusText.textContent = tr("جارٍ البحث…", "Searching…");
+    statusDetail.textContent = "";
+    renderLabels();
+    const started = performance.now();
+    try {
+      const answer = await search(question);
+      if (current !== epoch) return;
+      results.replaceChildren(answer);
+      await vault.saveVectors();
+      statusText.textContent = tr(
+        `اكتمل البحث في ${((performance.now() - started) / 1000) | 0} ث؛ حُفظت بيانات البحث.`,
+        `Search complete in ${((performance.now() - started) / 1000) | 0} s; search data saved.`,
+      );
+    } catch (error) {
+      if (current === epoch) {
+        statusText.textContent = errorText(error);
+        results.append(button(tr("إعادة المحاولة", "Retry"), executeSearch));
+      }
+    } finally {
+      if (current === epoch) {
+        searching = false;
+        statusDetail.textContent = "";
+        renderLabels();
+      }
+    }
+  }
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    executeSearch();
+  };
+  function cancelSearch() {
+    if (importing) return;
+    for (const job of pending.values()) {
+      clearTimeout(job.timer);
+      job.reject(Error("cancelled"));
+    }
+    pending.clear();
+    worker?.terminate();
+    worker = undefined;
+    searching = false;
+    renderLabels();
   }
   let worker;
   const pending = new Map();
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.15.1", import.meta.url),
+      new URL("./library-worker.mjs?v=0.16.0", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
@@ -51,7 +885,7 @@ export function createLibrary({
         clearTimeout(job.timer);
         job.timer = setTimeout(job.timeout, 120000);
         const p = data.progress;
-        document.getElementById("status-detail").textContent =
+        statusDetail.textContent =
           p.stage === "model"
             ? tr(
                 "جارٍ تجهيز نموذج البحث بالمعنى؛ التحميل الأول نحو 136 MB. يبقى الملف على جهازك.",
@@ -99,466 +933,10 @@ export function createLibrary({
       pending.set(id, { resolve, reject, timer, timeout });
       worker.postMessage({ ...data, id });
     });
-  const tr = (ar, en) => (getLanguage() === "ar" ? ar : en);
-  const node = (tag, text, cls) => {
-    const n = document.createElement(tag);
-    if (text) n.textContent = text;
-    if (cls) n.className = cls;
-    return n;
-  };
-  const button = (text, fn) => {
-    const b = node("button", text);
-    b.type = "button";
-    b.onclick = fn;
-    return b;
-  };
-  const input = (form, label, type = "text") => {
-    const wrap = node("label", label),
-      field = node("input");
-    field.type = type;
-    wrap.append(field);
-    form.append(wrap);
-    return field;
-  };
-  const errorText = () =>
-    tr(
-      "تعذر الحفظ أو الفهرسة. تحقق من صيغة الملف وحجمه وإتاحة تخزين المتصفح ثم أعد المحاولة.",
-      "Could not save or index. Check file format, size and browser storage, then retry.",
-    );
-  const extractionNote = (book) => {
-    if (!book.extraction) return "";
-    const skipped = book.extraction.pagesWithoutText;
-    return (
-      tr(
-        "نص مستخرج آليًا؛ راجع مطابقته وترتيبه في الأصل. الصور لا تُفهرس.",
-        "Automatically extracted text; check wording and reading order against the original. Images are not indexed.",
-      ) +
-      (skipped.length
-        ? tr(
-            ` صفحات لم يُستخرج منها نص: ${skipped.join("، ")}.`,
-            ` Pages without extractable text: ${skipped.join(", ")}.`,
-          )
-        : "")
-    );
-  };
-  async function refresh() {
-    [shelves, books] = await Promise.all([
-      libraryDB("getAll", "shelves"),
-      libraryDB("getAll", "books"),
-    ]);
-    available = true;
-    render();
-  }
-  function scopeIds() {
-    return books
-      .filter(
-        (b) =>
-          b.language === getLanguage() &&
-          (scopeType === "all" ||
-            (scopeType === "book" ? chosen.has(b.id) : chosen.has(b.shelfId))),
-      )
-      .map((b) => b.id);
-  }
-  function renderScope() {
-    try {
-      localStorage.setItem(
-        "raff-library-scope",
-        JSON.stringify({ mode, scopeType, chosen: [...chosen] }),
-      );
-    } catch {
-      /* Optional preference. */
-    }
-    scope.replaceChildren();
-    scope.dataset.mode = mode ? "private" : "public";
-    document.getElementById("submit").textContent = mode
-      ? tr("ابحث في مكتبتي ←", "Search my library →")
-      : tr("ابحث بالمعنى ←", "Search by meaning →");
-    for (const id of ["intro", "starter"])
-      document.getElementById(id).hidden = mode || location.hash !== "#ask";
-    const switches = node("div", "", "choices");
-    for (const [value, label] of [
-      [false, tr("مصادر رَفّ العامة", "Raff public sources")],
-      [true, tr("مكتبتي الخاصة", "My private library")],
-    ]) {
-      const b = button(label, () => {
-        mode = value;
-        changed();
-        renderScope();
-      });
-      b.setAttribute("aria-pressed", String(mode === value));
-      switches.append(b);
-    }
-    scope.append(switches);
-    document.getElementById("book").hidden = mode;
-    document.getElementById("scope-label").hidden = mode;
-    if (!mode) return;
-    scope.append(
-      node(
-        "p",
-        tr(
-          "بحث داخل كتبك المحددة فقط: مطابقة نصية سريعة، ثم ترتيب بالمعنى للمقاطع المرشحة عند الحاجة. لا ينتظر السؤال فهرسة الكتاب كله بالنموذج.",
-          "Search only your selected books: fast text matching, then semantic ranking of candidate passages when needed. Queries no longer wait for neural indexing of the entire book.",
-        ),
-        "notice",
-      ),
-    );
-    const types = node("div", "", "choices");
-    for (const [value, label] of [
-      ["all", tr("كل مكتبتي", "All my books")],
-      ["book", tr("كتاب واحد", "One book")],
-      ["shelf", tr("رف واحد", "One shelf")],
-      ["shelves", tr("عدة رفوف", "Several shelves")],
-    ]) {
-      const b = button(label, () => {
-        scopeType = value;
-        chosen.clear();
-        changed();
-        renderScope();
-      });
-      b.setAttribute("aria-pressed", String(scopeType === value));
-      types.append(b);
-    }
-    scope.append(types);
-    const items =
-      scopeType === "book"
-        ? books.filter((b) => b.language === getLanguage())
-        : shelves;
-    if (scopeType !== "all") {
-      const choices = node("div", "", "choices");
-      for (const item of items) {
-        const b = button(item.title, () => {
-          if (scopeType !== "shelves") chosen.clear();
-          chosen.has(item.id) ? chosen.delete(item.id) : chosen.add(item.id);
-          changed();
-          renderScope();
-        });
-        b.setAttribute("aria-pressed", String(chosen.has(item.id)));
-        choices.append(b);
-      }
-      scope.append(choices);
-    }
-    scope.append(
-      node(
-        "p",
-        tr(
-          `النطاق الحالي: ${scopeIds().length} كتابًا باللغة المختارة.`,
-          `Current scope: ${scopeIds().length} books in the selected language.`,
-        ),
-      ),
-      button(
-        tr("إدارة مكتبتي وإضافة كتاب", "Manage library and add a book"),
-        () => navigate("library"),
-      ),
-    );
-  }
-  function render() {
-    renderScope();
-    panel.replaceChildren(
-      node("h2", tr("مكتبتي — رفوف الباحث", "My library — Research shelves")),
-      node(
-        "p",
-        tr(
-          "رَفّ مكتبتك العلمية القابلة للنمو: أنشئ رفوفًا، وأضف كتبك، ثم ابحث داخل المصادر التي تختارها.",
-          "Raff is your growing research library: create shelves, add books, and search the sources you choose.",
-        ),
-      ),
-      node(
-        "p",
-        tr(
-          "تُحفظ الكتب والفهارس في هذا المتصفح على هذا الجهاز، ولا تُرفع إلى GitHub أو خادم. ليست حسابًا متزامنًا؛ قد يحذفها مسح بيانات المتصفح أو انتهاء الجلسة الخاصة. احتفظ بملفاتك الأصلية واستخدم تنزيل نسخة الكتاب.",
-          "Books and indexes stay in this browser on this device; they are not uploaded to GitHub or a server. This is not a synced account. Clearing browser data or ending a private session can remove them. Keep your originals and download book copies.",
-        ),
-        "notice",
-      ),
-    );
-    const message = node("p");
-    message.setAttribute("role", "status");
-    panel.append(message);
-    if (!available) {
-      message.textContent = errorText();
-      return;
-    }
-    const shelfForm = node("form", "", "library-form");
-    const shelfName = input(shelfForm, tr("اسم الرف الجديد", "New shelf name"));
-    shelfName.required = true;
-    shelfName.maxLength = 100;
-    const create = node("button", tr("+ إنشاء رف", "+ Create shelf"));
-    create.type = "submit";
-    shelfForm.append(create);
-    shelfForm.onsubmit = async (e) => {
-      e.preventDefault();
-      if (!shelfName.value.trim()) return;
-      create.disabled = true;
-      try {
-        await libraryDB("put", "shelves", {
-          id: crypto.randomUUID(),
-          title: shelfName.value.trim(),
-        });
-        await refresh();
-        changed();
-      } catch {
-        message.textContent = errorText();
-        create.disabled = false;
-      }
-    };
-    panel.append(shelfForm);
-    const form = node("form", "", "library-form");
-    form.append(
-      node("h3", tr("+ إضافة كتاب وفهرسته", "+ Add and index a book")),
-    );
-    const title = input(form, tr("عنوان الكتاب", "Book title"));
-    title.required = true;
-    title.maxLength = 200;
-    const author = input(form, tr("المؤلف / المصدر", "Author / source"));
-    author.maxLength = 200;
-    const targetLabel = node("label", tr("الرف", "Shelf")),
-      target = node("select");
-    target.required = true;
-    for (const s of shelves) {
-      const o = node("option", s.title);
-      o.value = s.id;
-      target.append(o);
-    }
-    targetLabel.append(target);
-    form.append(targetLabel);
-    const langLabel = node("label", tr("لغة الكتاب", "Book language")),
-      lang = node("select");
-    for (const [value, label] of [
-      ["ar", "العربية"],
-      ["en", "English"],
-    ]) {
-      const o = node("option", label);
-      o.value = value;
-      lang.append(o);
-    }
-    lang.value = getLanguage();
-    langLabel.append(lang);
-    form.append(langLabel);
-    const file = input(
-      form,
-      tr(
-        "ملف الكتاب: PDF أو Word DOCX نصّي (حتى 20 MB)، أو TXT / MD / JSON (حتى 5 MB)",
-        "Book file: text PDF or Word DOCX (up to 20 MB), or TXT / MD / JSON (up to 5 MB)",
-      ),
-      "file",
-    );
-    file.accept = ".txt,.md,.json,.pdf,.docx,.doc";
-    file.required = true;
-    form.append(
-      node(
-        "p",
-        tr(
-          "يُستخرج النص داخل جهازك دون رفع الملف. PDF: المرجع ترتيب الصفحة في الملف، وقد يختلف عن الرقم المطبوع. Word DOCX: المرجع رقم الفقرة؛ الصور لا تتحول إلى نص. ملفات DOC القديمة يجب حفظها بصيغة DOCX. راجع ترتيب النص المستخرج، خاصة الأعمدة والحواشي؛ لا يوجد OCR. TXT وMD يستخدمان رقم الفقرة، وJSON يحفظ المرجع المرفق بالنص.",
-          "Text is extracted on your device without uploading the file. PDF references use file page order, which may differ from printed numbers. Word DOCX uses paragraph numbers; images are not converted to text. Save old DOC files as DOCX first. Review extraction order, especially columns and footnotes; there is no OCR. TXT and MD use paragraph locations; JSON retains supplied references.",
-        ),
-      ),
-    );
-    const submit = node("button", tr("استيراد وفهرسة", "Import and index"));
-    submit.type = "submit";
-    submit.disabled = !shelves.length || importing;
-    form.append(submit);
-    if (!shelves.length)
-      form.append(node("p", tr("أنشئ رفًا أولًا.", "Create a shelf first.")));
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      if (importing) return;
-      const selected = file.files[0];
-      if (selected && /\.doc$/i.test(selected.name)) {
-        message.textContent = tr(
-          "ملف Word قديم بصيغة DOC. افتحه في Word واختر «حفظ باسم» ثم DOCX، وأضفه مجددًا.",
-          "This is an old DOC file. Open it in Word, choose Save As DOCX, and import it again.",
-        );
-        return;
-      }
-      const binary = selected && /\.(pdf|docx)$/i.test(selected.name);
-      if (!selected || selected.size > (binary ? 20_000_000 : 5_000_000)) {
-        message.textContent = errorText();
-        return;
-      }
-      importing = true;
-      submit.disabled = true;
-      message.textContent = tr(
-        "جارٍ التحقق والفهرسة…",
-        "Validating and indexing…",
-      );
-      try {
-        const book = await run({
-          type: "import",
-          payload: {
-            ...(binary
-              ? { buffer: await selected.arrayBuffer() }
-              : { content: await selected.text() }),
-            filename: selected.name,
-            title: title.value,
-            author: author.value,
-            language: lang.value,
-            shelfId: target.value,
-          },
-        });
-        // Only validated, completely indexed books are committed and made searchable.
-        await libraryDB("put", "books", book);
-        mode = true;
-        scopeType = "book";
-        chosen = new Set([book.id]);
-        await refresh();
-        changed();
-        panel.querySelector("[role=status]").textContent = tr(
-          `حُفظ ${book.units.length} موضعًا، واختير الكتاب نطاقًا للبحث. اضغط «الانتقال للبحث في مكتبتي». يمكنك معاينة النص المستخرج أسفل بطاقة الكتاب. اختر لغة الكتاب نفسها عند البحث.`,
-          `${book.units.length} passages saved; this book is now the search scope. Click “Search my library”. You can inspect the extracted text in its book card. Select the book’s language when searching.`,
-        );
-      } catch (error) {
-        const messages = {
-          "document-no-text": tr(
-            "لم نجد نصًا كافيًا قابلًا للاستخراج؛ قد يكون الملف صورًا أو مسحًا ضوئيًا. لم تتم إضافته. يلزم ملف نصّي أو OCR خارج الموقع.",
-            "No sufficient extractable text was found. This may be a scan or image-only file. It was not added. Use a text document or external OCR.",
-          ),
-          "document-password": tr(
-            "الملف محمي بكلمة مرور. أضف نسخة نصية غير محمية تملك صلاحية استخدامها.",
-            "The PDF is password protected. Import an unprotected text copy you are authorized to use.",
-          ),
-          "document-limit": tr(
-            "تجاوز الملف حدود المعالجة: 20 MB للملف، و2000 صفحة PDF، و5 ملايين محرف للنص المستخرج. قسّمه إلى أجزاء أصغر.",
-            "The document exceeds processing limits: 20 MB per file, 2,000 PDF pages, and 5 million extracted characters. Split it into smaller parts.",
-          ),
-          "document-timeout": tr(
-            "استغرقت المعالجة وقتًا طويلًا. لم يُحفظ الملف؛ جرّب جزءًا أصغر أو أعد المحاولة.",
-            "Processing timed out. The file was not saved; try a smaller part or retry.",
-          ),
-          "document-invalid": tr(
-            "تعذر قراءة الملف. قد يكون تالفًا أو مشفرًا أو لا يطابق صيغته. أعد حفظه من برنامجه الأصلي ثم حاول مجددًا.",
-            "The file could not be read. It may be damaged, encrypted or incorrectly named. Save it again using its original application, then retry.",
-          ),
-        };
-        message.textContent = messages[error.message] || errorText();
-      } finally {
-        importing = false;
-        const b = panel.querySelector(
-          ".library-form + .library-form button[type=submit]",
-        );
-        if (b) b.disabled = !shelves.length;
-      }
-    };
-    panel.append(form);
-    for (const shelf of shelves) {
-      const card = node("section", "", "card");
-      card.append(node("h3", shelf.title));
-      const own = books.filter((b) => b.shelfId === shelf.id);
-      card.append(node("p", tr(`${own.length} كتب`, `${own.length} books`)));
-      const rename = node("form", "", "library-form"),
-        name = input(rename, tr("تعديل اسم الرف", "Rename shelf"));
-      name.value = shelf.title;
-      name.maxLength = 100;
-      name.required = true;
-      const save = node("button", tr("حفظ الاسم", "Save name"));
-      save.type = "submit";
-      rename.append(save);
-      rename.onsubmit = async (e) => {
-        e.preventDefault();
-        if (!name.value.trim()) return;
-        try {
-          await libraryDB("put", "shelves", {
-            ...shelf,
-            title: name.value.trim(),
-          });
-          await refresh();
-        } catch {
-          message.textContent = errorText();
-        }
-      };
-      card.append(rename);
-      for (const book of own) {
-        const row = node("article", "", "library-book");
-        const preview = node("details");
-        preview.append(
-          node(
-            "summary",
-            tr(
-              "معاينة النص المحفوظ والفهرسة",
-              "Inspect saved text and indexing",
-            ),
-          ),
-          node(
-            "p",
-            tr(
-              `اللغة: ${book.language} · ${book.units.length} موضعًا محفوظًا.`,
-              `Language: ${book.language} · ${book.units.length} saved passages.`,
-            ),
-          ),
-        );
-        for (const unit of book.units.slice(0, 3))
-          preview.append(
-            node("h5", unit.reference),
-            node("p", unit.text.slice(0, 1500), "excerpt"),
-          );
-        row.append(preview);
-        if (book.extraction)
-          row.append(node("p", extractionNote(book), "notice"));
-        row.append(
-          node("h4", book.title),
-          node(
-            "p",
-            `${book.author} · ${book.language} · ${book.units.length} ${tr("موضع مفهرس", "indexed passages")}`,
-          ),
-        );
-        const moveLabel = node("label", tr("نقل إلى رف", "Move to shelf")),
-          move = node("select");
-        for (const s of shelves) {
-          const o = node("option", s.title);
-          o.value = s.id;
-          move.append(o);
-        }
-        move.value = book.shelfId;
-        move.onchange = async () => {
-          try {
-            await libraryDB("put", "books", { ...book, shelfId: move.value });
-            await refresh();
-            changed();
-          } catch {
-            message.textContent = errorText();
-          }
-        };
-        moveLabel.append(move);
-        row.append(moveLabel);
-        row.append(
-          button(tr("تنزيل نسخة الكتاب", "Download book copy"), () => {
-            const data = {
-              title: book.title,
-              author: book.author,
-              language: book.language,
-              sections: book.units.map(({ text, reference, heading }) => ({
-                text,
-                reference,
-                heading,
-              })),
-            };
-            const url = URL.createObjectURL(
-              new Blob([JSON.stringify(data, null, 2)], {
-                type: "application/json",
-              }),
-            );
-            const a = node("a");
-            a.href = url;
-            a.download = `${book.id}.json`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-          }),
-        );
-        card.append(row);
-      }
-      panel.append(card);
-    }
-    panel.append(
-      button(tr("الانتقال للبحث في مكتبتي", "Search my library"), () => {
-        mode = true;
-        changed();
-        renderScope();
-        navigate("ask");
-      }),
-    );
-  }
+
   async function search(question) {
     const result = node("div");
-    if (!available) {
+    if (!vault.ready) {
       result.append(node("p", errorText()));
       return result;
     }
@@ -578,7 +956,10 @@ export function createLibrary({
         getLanguage(),
       ))
         controls.append(
-          button(choice.label, () => selectQuestion(choice.question)),
+          button(choice.label, () => {
+            questionInput.value = choice.question;
+            executeSearch();
+          }),
         );
       result.append(controls);
       return result;
@@ -677,22 +1058,33 @@ export function createLibrary({
     }
     return result;
   }
-  refresh().catch(() => render());
+
+  render();
+  vault
+    .init()
+    .then(() => {
+      refresh();
+      message.textContent = tr(
+        "استعيدت المكتبة المحفوظة دون إعادة رفع الكتب.",
+        "Saved library restored without uploading books again.",
+      );
+    })
+    .catch((e) => {
+      message.textContent = errorText(e);
+      render();
+      manager.open = true;
+    });
   return {
-    cancelSearch() {
-      if (importing || !pending.size) return;
-      for (const job of pending.values()) {
-        clearTimeout(job.timer);
-        job.reject(Error("cancelled"));
-      }
-      pending.clear();
-      worker?.terminate();
-      worker = undefined;
-    },
     get active() {
-      return mode;
+      return false;
     },
     render,
     search,
+    cancelSearch,
+    addShelf() {
+      navigate("library");
+      manager.open = true;
+      management.scrollIntoView({ block: "start" });
+    },
   };
 }

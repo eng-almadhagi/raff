@@ -1,7 +1,7 @@
-import { normalize } from "./core.mjs?v=0.15.1";
-import { createLibrary } from "./library-ui.mjs?v=0.15.1";
-import { copy } from "./i18n.mjs?v=0.15.1";
-import { clarificationChoices } from "./policy.mjs?v=0.15.1";
+import { normalize } from "./core.mjs?v=0.16.0";
+import { createLibrary } from "./library-ui.mjs?v=0.16.0";
+import { copy } from "./i18n.mjs?v=0.16.0";
+import { clarificationChoices } from "./policy.mjs?v=0.16.0";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -68,11 +68,7 @@ function show(section) {
     "release-note",
     "result",
   ])
-    $(id).hidden =
-      page !== "ask" ||
-      (id === "intro" && section === "result") ||
-      (["intro", "starter"].includes(id) &&
-        $("library-scope").dataset.mode === "private");
+    $(id).hidden = page !== "ask" || (id === "intro" && section === "result");
   $("about-panel").hidden = page !== "about";
   $("method-panel").hidden = page !== "method";
   $("library-panel").hidden = page !== "library";
@@ -98,25 +94,6 @@ const personalLibrary = createLibrary({
   scope: $("library-scope"),
   getLanguage: () => language,
   navigate: show,
-  selectQuestion: (question) => {
-    $("question").value = question;
-    ask();
-  },
-  changed: () => {
-    generation++;
-    personalLibrary.cancelSearch();
-    worker?.terminate();
-    worker = undefined;
-    $("result").replaceChildren();
-    lastQuestion = "";
-    if (personalLibrary.active) {
-      setBusy(false);
-      ready = true;
-      $("submit").disabled = false;
-      status(t().ready);
-      $("search-metrics").hidden = true;
-    } else initialize();
-  },
 });
 function open(source, id) {
   if (!ready || busy) return;
@@ -253,7 +230,7 @@ function sourceCard(u, opened = false) {
 }
 function renderAnswer(data) {
   setBusy(false);
-  show("result");
+  if (page === "ask") show("result");
   const a = el("section", undefined, "answer");
   a.append(
     el("span", t().yourQuestion, "question-label"),
@@ -348,16 +325,6 @@ function renderAnswer(data) {
   }
 }
 function initialize() {
-  if (personalLibrary.active) {
-    generation++;
-    worker?.terminate();
-    worker = undefined;
-    ready = true;
-    setBusy(false);
-    $("submit").disabled = false;
-    status(t().ready);
-    return;
-  }
   const currentGeneration = ++generation;
   const interrupted = busy;
   status(t().loading);
@@ -376,7 +343,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.15.1", import.meta.url),
+    new URL("./search-worker.mjs?v=0.16.0", import.meta.url),
     {
       type: "module",
     },
@@ -401,7 +368,7 @@ function initialize() {
     if (data.type === "opened") {
       setBusy(false);
       $("submit").disabled = false;
-      show("result");
+      if (page === "ask") show("result");
       $("result").replaceChildren(sourceCard(data.citation, true));
       status(t().complete);
     }
@@ -419,7 +386,10 @@ function initialize() {
   worker.postMessage({ type: "init", catalog: sources(), language });
 }
 function translate() {
-  $("library-nav").textContent = language === "ar" ? "مكتبتي" : "My library";
+  $("library-nav").textContent =
+    language === "ar" ? "▤ مكتبتي" : "▤ My library";
+  $("add-shelf-nav").textContent =
+    language === "ar" ? "⊕ إضافة رف" : "⊕ Add shelf";
   document.documentElement.lang = language;
   document.documentElement.dir = t().dir;
   document.title =
@@ -641,26 +611,6 @@ async function ask() {
   $("result").replaceChildren();
   $("submit").disabled = true;
   status(t().searching);
-  if (personalLibrary.active) {
-    const requestGeneration = generation;
-    const started = performance.now();
-    try {
-      const result = await personalLibrary.search(lastQuestion);
-      if (requestGeneration !== generation) return;
-      $("result").replaceChildren(result);
-      $("search-metrics").textContent =
-        language === "ar"
-          ? `الوقت الكلي: ${((performance.now() - started) / 1000).toFixed(2)} ث`
-          : `Total time: ${((performance.now() - started) / 1000).toFixed(2)} s`;
-      $("search-metrics").hidden = false;
-      setBusy(false);
-      $("submit").disabled = false;
-      status(t().complete);
-    } catch {
-      if (requestGeneration === generation) failed();
-    }
-    return;
-  }
   worker.postMessage({
     type: "ask",
     question: lastQuestion,
@@ -680,9 +630,9 @@ $("home").onclick = () => show("home");
 $("about").onclick = () => show("about");
 $("method").onclick = () => show("method");
 $("library-nav").onclick = () => show("library");
+$("add-shelf-nav").onclick = () => personalLibrary.addShelf();
 function changeScope() {
   const currentPage = page;
-  personalLibrary.cancelSearch();
   $("result").replaceChildren();
 
   lastQuestion = "";
@@ -718,7 +668,6 @@ $("theme").onclick = () => {
   }
 };
 $("reset").onclick = () => {
-  personalLibrary.cancelSearch();
   $("question").value = "";
   $("result").replaceChildren();
   $("search-metrics").hidden = true;

@@ -1,4 +1,4 @@
-import { normalize } from "./core.mjs?v=0.15.1";
+import { normalize } from "./core.mjs?v=0.16.0";
 
 export const policyMessages = {
   ar: {
