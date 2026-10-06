@@ -19,6 +19,10 @@ def public_files():
     for path in paths:
         if path.is_symlink() or not path.resolve().is_relative_to(ROOT):
             raise ValueError("Symlink/outside path in public package")
+        if path.suffix == ".ttf" and path.parent == ROOT/"site"/"fonts":
+            if path.read_bytes()[:4] not in (b"\x00\x01\x00\x00", b"OTTO"):
+                raise ValueError("Invalid bundled font")
+            continue
         text=path.read_text(encoding="utf-8")
         if SECRET.search(text):
             raise ValueError(f"Possible secret in {path.relative_to(ROOT)}")

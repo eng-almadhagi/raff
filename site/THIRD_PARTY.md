@@ -6,3 +6,7 @@
 - Runtime source: https://github.com/huggingface/transformers.js
 
 These dependencies do not license the religious book. The repository's MIT license applies to project code, not the imported source text. No external font or analytics service is used.
+# Typography
+
+Amiri (regular/bold) and Tajawal (regular/bold) are bundled from the official Google Fonts repository under the SIL Open Font License. Their license and copyright notices are preserved in `fonts/Amiri-OFL.txt` and `fonts/Tajawal-OFL.txt`. No source text or example corpus from the user's design reference is included.
+

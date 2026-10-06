@@ -15,7 +15,9 @@ let worker,
   busy = false,
   limit = 60,
   lastQuestion = "",
-  language = "ar";
+  language = "ar",
+  sourceChoice = "all",
+  generation = 0;
 const t = () => copy[language];
 const sources = () =>
   catalog.filter(
@@ -29,7 +31,7 @@ const sources = () =>
       ),
   );
 const selected = () =>
-  $("book").value === "all" ? sources().map((m) => m.id) : [$("book").value];
+  sourceChoice === "all" ? sources().map((m) => m.id) : [sourceChoice];
 function status(s) {
   $("status").textContent = s;
 }
@@ -75,13 +77,26 @@ function sourceCard(u, opened = false) {
       "span",
       u.preview.label === "site-summary"
         ? c.siteSummary
-        : u.preview.complete
-          ? c.short
-          : c.excerpt,
+        : u.preview.label === "full-answer"
+          ? c.completeAnswer
+          : u.preview.complete
+            ? c.short
+            : c.excerpt,
       "badge",
     ),
-    el("p", u.preview.text, "excerpt"),
+    el(
+      "p",
+      u.preview.text,
+      "excerpt" + (u.preview.label === "full-answer" ? " complete-answer" : ""),
+    ),
   );
+  if (u.preview.label === "full-answer") {
+    const quote = box.querySelector(".complete-answer");
+    quote.tabIndex = 0;
+    quote.setAttribute("role", "region");
+    quote.setAttribute("aria-label", c.completeAnswer);
+    box.append(el("p", c.readingNote, "notice"));
+  }
   if (!u.preview.complete) box.append(el("p", c.caution, "caution"));
   if (u.evidence?.length) {
     const e = el("section", undefined, "evidence");
@@ -219,6 +234,8 @@ function renderAnswer(data) {
   );
 }
 function initialize() {
+  const currentGeneration = ++generation;
+  status(t().loading);
   ready = false;
   busy = false;
   units = [];
@@ -233,6 +250,7 @@ function initialize() {
     type: "module",
   });
   worker.onmessage = ({ data }) => {
+    if (currentGeneration !== generation) return;
     if (data.type === "progress") status(data.message);
     if (data.type === "ready") {
       ready = true;
@@ -258,6 +276,7 @@ function initialize() {
     }
   };
   worker.onerror = () => {
+    if (currentGeneration !== generation) return;
     busy = false;
     status(t().error);
     $("submit").disabled = !ready;
@@ -276,16 +295,33 @@ function translate() {
   $("brand-name").textContent = language === "ar" ? "رَفّ" : "Raff";
   $("question").placeholder = t().placeholder;
   $("release-note").textContent = t().disclosure;
+  for (const b of $("language").querySelectorAll("button"))
+    b.setAttribute("aria-pressed", String(b.dataset.language === language));
+  $("theme").setAttribute(
+    "aria-label",
+    language === "ar"
+      ? "تبديل المظهر الداكن والفاتح"
+      : "Toggle dark and light theme",
+  );
   $("book").replaceChildren();
-  if (language === "ar") {
-    const o = el("option", t().all);
-    o.value = "all";
-    $("book").append(o);
-  }
-  for (const m of sources()) {
-    const o = el("option", m.title);
-    o.value = m.id;
-    $("book").append(o);
+  const choices =
+    language === "ar"
+      ? [{ id: "all", title: "جميع المصادر" }, ...sources()]
+      : sources().map((m) => ({ ...m, title: "IslamQA — English" }));
+  for (const m of choices) {
+    const b = el("button", m.title);
+    b.type = "button";
+    b.dataset.source = m.id;
+    b.setAttribute(
+      "aria-pressed",
+      String(language === "en" || sourceChoice === m.id),
+    );
+    b.onclick = () => {
+      if (sourceChoice === m.id || language === "en") return;
+      sourceChoice = m.id;
+      changeScope();
+    };
+    $("book").append(b);
   }
   $("facts").textContent = sources()
     .map((m) => `${m.title}: ${m.units.toLocaleString(language)}`)
@@ -363,17 +399,39 @@ $("browse").onclick = () => {
   status(t().loading);
   worker.postMessage({ type: "browse", sourceIds: selected() });
 };
-$("language").onchange = () => {
-  language = $("language").value;
-  $("question").value = "";
+function changeScope() {
   $("result").replaceChildren();
+  $("entries").replaceChildren();
+  lastQuestion = "";
   translate();
   initialize();
   show("home");
-};
-$("book").onchange = () => {
-  initialize();
-  show("home");
+}
+for (const b of $("language").querySelectorAll("button"))
+  b.onclick = () => {
+    if (language === b.dataset.language) return;
+    language = b.dataset.language;
+    sourceChoice = "all";
+    changeScope();
+  };
+try {
+  const savedTheme = localStorage.getItem("raff-theme");
+  if (["light", "dark"].includes(savedTheme))
+    document.documentElement.dataset.theme = savedTheme;
+} catch {
+  /* Storage is optional. */
+}
+$("theme").onclick = () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === "dark"
+    : matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = dark ? "light" : "dark";
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem("raff-theme", theme);
+  } catch {
+    /* Optional preference. */
+  }
 };
 $("reset").onclick = () => {
   $("question").value = "";

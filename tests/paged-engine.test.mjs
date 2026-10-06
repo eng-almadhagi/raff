@@ -118,5 +118,6 @@ test("focused excerpts retain original text and a following exception paragraph"
   });
   assert.ok(result.text.includes("However"));
   assert.ok(text.includes(result.text));
-  assert.equal(result.complete, false);
+  assert.equal(result.complete, true);
+  assert.equal(result.text, text);
 });

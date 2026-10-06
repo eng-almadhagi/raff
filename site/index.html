@@ -29,10 +29,32 @@
         ><button id="about" data-i18n="about">عن المشروع</button
         ><button id="method" data-i18n="method">المنهجية والمصادر</button>
       </nav>
-      <select id="language" aria-label="Language / اللغة">
-        <option value="ar">العربية</option>
-        <option value="en">English</option>
-      </select>
+      <div class="header-tools">
+        <div
+          id="language"
+          class="choices"
+          role="group"
+          aria-label="Language / اللغة"
+        >
+          <button
+            type="button"
+            data-language="ar"
+            lang="ar"
+            aria-pressed="true"
+          >
+            العربية
+          </button>
+          <button
+            type="button"
+            data-language="en"
+            lang="en"
+            aria-pressed="false"
+          >
+            English
+          </button>
+        </div>
+        <button id="theme" type="button" aria-label="تبديل المظهر">◐</button>
+      </div>
     </header>
     <main>
       <section id="intro" class="hero">
@@ -44,8 +66,13 @@
         <div class="facts" id="facts"></div>
       </section>
       <section class="search-panel" aria-label="Search">
-        <label for="book" data-i18n="scope"></label
-        ><select id="book"></select>
+        <span id="scope-label" class="field-label" data-i18n="scope"></span>
+        <div
+          id="book"
+          class="choices source-choices"
+          role="group"
+          aria-labelledby="scope-label"
+        ></div>
         <form id="ask-form">
           <label for="question" data-i18n="label"></label
           ><textarea id="question" maxlength="600" rows="3" required></textarea>

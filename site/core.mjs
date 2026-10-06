@@ -301,63 +301,16 @@ export function preview(unit) {
   };
 }
 export function focusedPreview(unit, question, vocabulary) {
-  const fallback = preview(unit);
-  if (fallback.complete || !question) return fallback;
-  const source =
+  // Conditions can occur far beyond the best-matching paragraph. Without a
+  // verified summarizer, preserve the entire answer instead of guessing that
+  // two neighboring paragraphs contain every qualification and exception.
+  if (unit.content_type === "source_incomplete") return preview(unit);
+  const answer =
     unit.answer && unit.text.includes(unit.answer) ? unit.answer : unit.text;
-  const wanted = new Set(terms(question, vocabulary));
-  if (!wanted.size) return fallback;
-  const paragraphs = [...source.matchAll(/[^\n]+(?:\n(?!\n)[^\n]+)*/gu)];
-  const requestsEvidence = /(?:ادله|أدلة|دليل|evidence|hadith|proof)/iu.test(
-    question,
-  );
-  let best = null;
-  for (const [index, match] of paragraphs.entries()) {
-    if (
-      match[0].length < 80 ||
-      match[0].length > 1600 ||
-      match[0].startsWith("•") ||
-      (match[0].length < 200 && /[?؟]$/u.test(match[0]))
-    )
-      continue;
-    const tokens = new Set(terms(match[0], vocabulary));
-    const previous = paragraphs[index - 1];
-    const heading =
-      previous &&
-      previous[0].length < 160 &&
-      !previous[0].startsWith("•") &&
-      !/[.。]$/u.test(previous[0])
-        ? previous
-        : null;
-    const headingTerms = heading ? terms(heading[0], vocabulary) : [];
-    for (const term of headingTerms) tokens.add(term);
-    const hits = [...wanted].filter((term) => tokens.has(term)).length;
-    const score =
-      hits / wanted.size +
-      (0.05 * hits) / Math.sqrt(Math.max(tokens.size, 1)) +
-      (requestsEvidence &&
-      /(?:رواه|أخرجه|حديث|لقوله|narrated|reported|prophet)/iu.test(match[0])
-        ? 0.35
-        : 0);
-    const start =
-      heading && headingTerms.some((term) => wanted.has(term))
-        ? heading.index
-        : match.index;
-    if (hits && (!best || score > best.score))
-      best = { index, match, score, start };
-  }
-  if (!best) return fallback;
-  let end = best.match.index + best.match[0].length;
-  // Keep adjacent context, rather than guessing every way an exception begins.
-  for (let offset = 1; offset <= 2; offset++) {
-    const next = paragraphs[best.index + offset];
-    if (!next || next.index + next[0].length - best.start > 1600) break;
-    end = next.index + next[0].length;
-  }
   return {
-    text: source.slice(best.start, end),
-    complete: false,
-    label: "مقتطف ذو صلة · ليس ملخصًا مكتملًا",
+    text: answer,
+    complete: true,
+    label: answer.length <= 850 ? "short-answer" : "full-answer",
   };
 }
 export function evidence(unit) {

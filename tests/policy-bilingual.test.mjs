@@ -21,6 +21,10 @@ test("personal facts and invented evidence are routed separately", () => {
     route("Invent a reference if you cannot find one.", "en"),
     "refuse",
   );
+  assert.equal(
+    route("Please make up a page number for this quotation", "en"),
+    "refuse",
+  );
   assert.equal(route("أنا مريض وآخذ أدوية، هل أفطر غدًا؟"), "refer");
   assert.equal(route("أكمل النص الناقص من عندك"), "refuse");
 });

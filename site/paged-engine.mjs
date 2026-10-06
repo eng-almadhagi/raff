@@ -1,5 +1,15 @@
 import { terms, evidence, normalize, focusedPreview } from "./core.mjs";
-import { classifyPolicy, policyMessages, directReference } from "./policy.mjs";
+import {
+  classifyPolicy,
+  policyMessages,
+  directReference,
+} from "./policy.mjs?v=0.8.1";
+import {
+  prepareSubjects,
+  subjectQuery,
+  subjectMatch,
+  answerSupportsQuestion,
+} from "./relevance.mjs";
 
 export const bucket = (text) => {
   let h = 0;
@@ -23,12 +33,19 @@ const decode = (buffer) => {
   return values;
 };
 export function searchQuery(question, language) {
-  if (language === "en") return question;
+  if (language === "en")
+    return question.replace(
+      /^(?:what (?:is said|do (?:your|the) sources say) about)\s*/iu,
+      "",
+    );
   // Reusable colloquial vocabulary; source quotations are never transformed.
   let q = question
     .replace(/ينفع/gu, "يجوز")
     .replace(/يبان/gu, "يظهر")
     .replace(/وش يقول المصدر عن/gu, "حكم");
+  q = q.replace(/^.*(?:عطِ?ني|أعطني|اعطني) جواب[ًا]* موضوعي[ًا]* عن\s*/u, "");
+  q = q.replace(/في نهار رمضان/gu, "للصائم");
+  q = q.replace(/^هل توجد [أا]قوال مختلف[هة] في\s*/u, "الخلاف في ");
   // Presentation requests are not the subject of the fatwa. Removing them
   // improves both dense intent and lexical coverage without answer-specific rules.
   q = q
@@ -50,6 +67,44 @@ export function searchQuery(question, language) {
 // A scope mismatch is not a religious judgment. It prevents an explicitly
 // resident-only question from answering a travel query (and vice versa).
 export function scopeConflict(question, entry) {
+  const q = normalize(question),
+    title = normalize(entry.title);
+  // A named subtype must not be replaced by a general prayer introduction.
+  const subtype = q.match(
+    /(?:صلاه|صلاة) (الاستسقاء|الكسوف|الخسوف|التراويح|الجنازه|الجنازة|الجماعة|العيد)/u,
+  )?.[1];
+  if (subtype && !(title + " " + (entry.question || "")).includes(subtype))
+    return true;
+  // Explicit exceptional contexts in a title must not silently become the
+  // answer to a general query that never asked about that context.
+  for (const facet of [/(?:صمم|اصم|deaf)/iu, /(?:نذر|نذرت|vow|oath)/iu])
+    if (facet.test(title) && !facet.test(q)) return true;
+  if (
+    /بين.+و/u.test(q) &&
+    /^(?:هل يشرع )?.*(?:بعد|قبل) /u.test(title) &&
+    !/بين/u.test(title)
+  )
+    return true;
+  if (
+    /(?:لخطيب|للخطيب|حق خطيب|خطيب الجمعه)/u.test(title) &&
+    !/(?:لخطيب|للخطيب|الخطيب نفسه|خطيب الجمعه)/u.test(q)
+  )
+    return true;
+  if (/(?:قضاء.*رمضان|رمضان.*قضاء)/u.test(title) && !/قضاء/u.test(q))
+    return true;
+  if (/قضاء/u.test(title) && /(?:صوم|صيام|fast)/iu.test(q) && !/قضاء/u.test(q))
+    return true;
+  const occasion = q.match(/(?:عاشوراء|عرفه|عرفة)/u)?.[0];
+  if (occasion && !(title + " " + (entry.question || "")).includes(occasion))
+    return true;
+  if (
+    /فضل|فضيله/u.test(q) &&
+    !/^(?:ما\s+)?(?:فضل|فضيلة|فضيله|فضائل|ثواب|اجر|أجر)\s/u.test(title)
+  )
+    return true;
+  const grave = /(?:قبر|قبور|grave|cemeter)/iu;
+  if (grave.test(q) && !grave.test(title + " " + (entry.question || "")))
+    return true;
   const classify = (text) => {
     let q = normalize(text);
     const residence =
@@ -118,6 +173,7 @@ export class PagedEngine {
         base,
         postings: new Map(),
         text: new Map(),
+        subjects: prepareSubjects(index, this.vocabulary),
       });
     }
     const book = this.loaded.get(meta.id);
@@ -172,10 +228,7 @@ export class PagedEngine {
       unit.sha256 !== entry.sha256
     )
       throw Error("Source/language mismatch");
-    const p =
-      unit.site_summary && !question
-        ? { text: unit.site_summary, complete: false, label: "site-summary" }
-        : focusedPreview(unit, question, this.vocabulary);
+    const p = focusedPreview(unit, question, this.vocabulary);
     if (p.label !== "site-summary" && !unit.text.includes(p.text))
       throw Error("Invalid quotation");
     const related = [];
@@ -269,6 +322,12 @@ export class PagedEngine {
     }
     const maxlex = lex.reduce((a, b) => Math.max(a, b), 1e-12),
       rows = [];
+    const subjectQueryInfo = subjectQuery(
+      question,
+      book.subjects.frequencies,
+      n,
+      this.vocabulary,
+    );
     for (let i = 0; i < n; i++) {
       const u = book.index[i];
       if (!u.retrievable || scopeConflict(question, u)) continue;
@@ -276,6 +335,11 @@ export class PagedEngine {
         body = book.chunks ? dense[i] : focus;
       const coverage = covered[i] / Math.max(total, 1),
         semantic = 0.8 * focus + 0.2 * body;
+      const subject = subjectMatch(
+        subjectQueryInfo,
+        u,
+        book.subjects.documents[i],
+      );
       rows.push({
         index: i,
         id: u.id,
@@ -284,10 +348,12 @@ export class PagedEngine {
         dense: body,
         coverage,
         lexical: lex[i],
+        subject,
         score:
-          (0.22 * lex[i]) / maxlex +
-          0.5 * Math.max(0, (semantic - 0.65) / 0.35) +
-          0.28 * coverage,
+          (0.12 * lex[i]) / maxlex +
+          0.3 * Math.max(0, (semantic - 0.65) / 0.35) +
+          0.1 * coverage +
+          0.48 * subject.score,
       });
     }
     rows.sort((a, b) => b.score - a.score || a.index - b.index);
@@ -374,13 +440,22 @@ export class PagedEngine {
           );
           continue;
         }
-        const { rows, missing } = await this.rank(meta, query, vector),
-          best = rows[0];
+        const { rows, missing } = await this.rank(meta, query, vector);
         const enough = (r) =>
-          (r.coverage >= 0.4 && r.focus >= 0.84) ||
-          (r.coverage >= 0.6 && r.focus >= 0.835) ||
-          (r.coverage >= 0.25 && r.focus >= 0.875) ||
-          (r.coverage >= 0.4 && r.dense >= 0.855);
+          (r.subject.anchor || r.focus >= 0.91) &&
+          ((r.coverage >= 0.4 && r.focus >= 0.84) ||
+            (r.coverage >= 0.5 && r.focus >= 0.835) ||
+            (r.coverage >= 0.25 && r.focus >= 0.875) ||
+            (r.coverage >= 0.4 && r.dense >= 0.855) ||
+            (r.subject.titleCoverage >= 0.95 &&
+              r.subject.lead &&
+              r.focus >= 0.82)) &&
+          (Math.max(r.subject.titleCoverage, r.subject.questionCoverage) >=
+            0.4 ||
+            r.focus >= 0.89 ||
+            r.dense >= 0.89);
+        const eligible = rows.filter(enough),
+          best = eligible[0];
         const namedGap =
           /(?:بالاسم|by name)/iu.test(query) &&
           missing.some((t) => /[a-z]{3}/iu.test(t));
@@ -400,34 +475,29 @@ export class PagedEngine {
             normalize(question),
           ) ||
           /(?:فتاوي|النصوص|قارن|compare|opinions)/iu.test(normalize(question));
-        if (
-          !plural &&
-          rows.length > 1 &&
-          best.focus < 0.88 &&
-          best.score - rows[1].score < 0.025
-        ) {
-          sources.push({
-            id: meta.id,
-            title: meta.title,
-            kind: "clarify",
-            message: messages.clarify,
-            suggestions: rows.slice(0, 3).map((r) => r.title),
-            citations: [],
-          });
-          continue;
-        }
-        const selected = rows
-            .filter((r) => enough(r) && r.focus >= best.focus - 0.02)
-            .slice(0, plural ? 3 : 1),
+        // A small score margin among relevant fatwas is not linguistic ambiguity.
+        // Ambiguous questions are handled by policy before retrieval.
+        const selected = eligible
+            .filter(
+              (r) =>
+                enough(r) &&
+                (!best.subject.lead || r.subject.lead) &&
+                r.score >= best.score - 0.1,
+            )
+            .slice(0, 8),
           citations = [];
         for (const r of selected) {
           const c = await this.citation(meta, r.id, true, question);
+          if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
+          if (citations.length && r.score < best.score - 0.04) continue;
           if (!citations.some((p) => p.text === c.text)) citations.push(c);
+          if (citations.length >= (plural ? 2 : 1)) break;
         }
         sources.push({
           id: meta.id,
           title: meta.title,
-          kind: "citation",
+          kind: citations.length ? "citation" : "insufficient",
+          message: citations.length ? undefined : messages.insufficient,
           citations,
         });
       } catch (error) {

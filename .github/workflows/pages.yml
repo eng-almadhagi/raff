@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test tests/pages.test.mjs tests/policy-bilingual.test.mjs tests/paged-engine.test.mjs
+      - run: node --test tests/*.test.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

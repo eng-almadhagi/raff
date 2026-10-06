@@ -1,0 +1,79 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  answerSupportsQuestion,
+  intentTerms,
+  prepareSubjects,
+  subjectQuery,
+  subjectMatch,
+} from "../site/relevance.mjs";
+import { focusedPreview } from "../site/core.mjs";
+const vocabulary = {
+  stop: ["the", "how", "to", "a", "of", "is", "what"],
+  concepts: {},
+};
+test("inflected English activity words match without changing quotations", () => {
+  assert.deepEqual(
+    intentTerms("wiping socks", vocabulary),
+    intentTerms("wipe sock", vocabulary),
+  );
+});
+test("a direct subject is preferred to a secondary mention in a case title", () => {
+  const index = [
+    { title: "Camera lens cleaning", question: "Camera lens cleaning" },
+    {
+      title: "Water damage during camera lens cleaning",
+      question: "Camera lens cleaning",
+    },
+  ];
+  const prepared = prepareSubjects(index, vocabulary);
+  const query = subjectQuery(
+    "Camera lens cleaning",
+    prepared.frequencies,
+    index.length,
+    vocabulary,
+  );
+  assert.ok(
+    subjectMatch(query, index[0], prepared.documents[0]).score >
+      subjectMatch(query, index[1], prepared.documents[1]).score,
+  );
+});
+test("distant qualifications remain in full quoted answers", () => {
+  const answer =
+    "A synthetic answer about a telescope. ".repeat(50) +
+    "\n\nExcept in the following circumstances: " +
+    "qualification ".repeat(500);
+  const text = "Source question\n\n" + answer;
+  const result = focusedPreview({ text, answer }, "telescope", vocabulary);
+  assert.equal(result.text, answer);
+  assert.equal(result.complete, true);
+  assert.ok(result.text.includes("Except in the following circumstances"));
+  const incomplete = focusedPreview(
+    { text, answer, content_type: "source_incomplete" },
+    "telescope",
+    vocabulary,
+  );
+  assert.equal(incomplete.complete, false);
+});
+
+test("a topic listed only in a multi-part question is not answer evidence", () => {
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        question: "Telescope and microscope",
+        answer: "Microscope cleaning. ".repeat(80),
+      },
+      "Telescope",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "Telescope cleaning. ".repeat(80) },
+      "Telescope",
+      vocabulary,
+    ),
+    true,
+  );
+});

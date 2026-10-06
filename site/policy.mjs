@@ -47,7 +47,7 @@ export function classifyPolicy(question, language = "ar") {
   const q = normalize(question).replace(/ة/gu, "ه").trim(),
     words = q.split(/[^\p{L}\p{N}_]+/u);
   if (
-    /(?:اختلق|اخترع|من عندك|تجاهل (?:المصادر|التعليمات)|بدون مصدر|رقم صفحه يبدو|حتي لو المصدر|invent|fabricate|fake reference|ignore (?:sources|instructions)|make up a reference)/u.test(
+    /(?:اختلق|اخترع|من عندك|تجاهل (?:المصادر|التعليمات)|بدون مصدر|رقم صفحه يبدو|حتي لو المصدر|invent|fabricate|fake reference|ignore (?:sources|instructions)|make up (?:a |an )?(?:reference|page number|citation|source))/u.test(
       q,
     )
   )

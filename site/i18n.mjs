@@ -25,6 +25,9 @@ export const copy = {
     original: "الاقتباس الأصلي الكامل",
     excerpt: "مقتطف من المصدر · ليس ملخصًا مكتملًا",
     short: "جواب قصير منقول كاملًا",
+    completeAnswer: "جواب المصدر كاملًا · نقل حرفي يحفظ الشروط",
+    readingNote:
+      "أبقينا الجواب كاملًا لأن اختيار فقرة وحدها قد يُسقط شرطًا أو استثناءً. يمكن تمرير النص، وفتح الفتوى أسفل البطاقة لقراءتها كاملة دون إطار.",
     siteSummary: "خلاصة الموقع الأصلي · ليست ملخص رَفّ",
     caution:
       "قد تتضمن الفتوى شروطًا أو استثناءات إضافية؛ اقرأ النص الكامل قبل الاستناد إلى المقتطف.",
@@ -85,6 +88,9 @@ export const copy = {
     original: "Full original quotation",
     excerpt: "Source excerpt · Not a complete summary",
     short: "Complete short answer · Quoted verbatim",
+    completeAnswer: "Complete source answer · Conditions retained verbatim",
+    readingNote:
+      "The complete answer is retained because a single paragraph may omit a condition or exception. Scroll the text, or expand the full answer below to read it without a bounded panel.",
     siteSummary: "Original website summary · Not a Raff summary",
     caution:
       "The full answer may contain further conditions or exceptions. Read it before relying on the excerpt.",
