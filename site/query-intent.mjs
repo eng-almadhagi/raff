@@ -1,4 +1,4 @@
-import { normalize } from "./core.mjs?v=0.16.0";
+import { normalize } from "./core.mjs?v=0.16.1";
 
 // Shared question/answer compatibility, independent of books, IDs and test queries.
 // These describe actions and constraints, not religious conclusions.
@@ -169,12 +169,13 @@ export function assessIntent(question, unit, { passage = false } = {}) {
   )
     reasons.push("missing-circumstance");
   if (answer) {
-    const a = normalize(answer);
+    // A sermon greeting ("أما بعد") is not a temporal relation.
+    const a = normalize(answer).replace(/(?:اما\s+بعد|وبعد)\s*[:،,.؛»]?/gu, "");
     if (
       requested.type === "time" &&
       source.type !== "time" &&
       questionProfile(unit.question || "").type !== "time" &&
-      !/(?:قبل|بعد|خلال|حتي|ابتداء|يبدا|تبدا|ينتهي|تنتهي|تفتح|يفتح|تغلق|يغلق|الساع[ةه]|صباح|مساء|\b(?:before|after|until|within|starts?|ends?|begins?|between)\b)/iu.test(
+      !/(?:قبل|بعد|خلال|حتي|ابتداء|يبدا|تبدا|ينتهي|تنتهي|تفتح|يفتح|تغلق|يغلق|الساع[ةه]|صباح|مساء|(?:في\s+)?(?:سن[ةه]|عام|السنة|العام)\s+(?:\d|[٠-٩]|ال|واحد|اثن|ثلاث|اربع|خمس|ست|سبع|ثمان|تسع|عشر)|\b(?:before|after|until|within|starts?|ends?|begins?|between|in\s+\d{3,4})\b)/iu.test(
         a,
       )
     )
@@ -195,7 +196,7 @@ export function assessIntent(question, unit, { passage = false } = {}) {
       reasons.push("missing-quantity");
     if (
       requested.type === "time" &&
-      !/وقت|يوم|ليل|نهار|شهر|سن[ةه]|عام|ساع|دقيق|قبل|بعد|عند|حين|صباح|مساء|حتي|حول|الاحد|الاثنين|الثلاثاء|الاربعاء|الخميس|الجمع[ةه]|السبت|\b(?:when|before|after|day|week|month|year|hour|minute|morning|evening|until|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/iu.test(
+      !/وقت|يوم|ليل|نهار|شهر|سن[ةه]|عام|ساع|دقيق|قبل|بعد|عند|حين|صباح|مساء|حتي|حول|الاحد|الاثنين|الثلاثاء|الاربعاء|الخميس|الجمع[ةه]|السبت|\b(?:in\s+\d{3,4}|when|before|after|day|week|month|year|hour|minute|morning|evening|until|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/iu.test(
         a,
       )
     )

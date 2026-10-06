@@ -103,3 +103,30 @@ test("question-type evidence and word boundaries work outside the motivating top
   );
   assert.equal(verdict("هل يجوز لبس الخاتم؟", "لبس الخاتم للصبي"), "related");
 });
+
+test("sermon greetings do not supply a date but explicit years do", () => {
+  assert.equal(
+    assessIntent(
+      "متى كانت الرحلة؟",
+      { text: "الرحلة — أيام الإجازة\n\nالحمد لله رب العالمين، أما بعد:" },
+      { passage: true },
+    ).kind,
+    "related",
+  );
+  assert.equal(
+    assessIntent(
+      "متى كانت الرحلة؟",
+      { text: "كانت الرحلة في السنة العاشرة." },
+      { passage: true },
+    ).kind,
+    "direct",
+  );
+  assert.equal(
+    assessIntent(
+      "When did the expedition happen?",
+      { text: "The expedition happened in 1920." },
+      { passage: true },
+    ).kind,
+    "direct",
+  );
+});

@@ -111,3 +111,44 @@ test("booking deadline requires booking evidence, not just an event start time",
     [[2]],
   );
 });
+
+test("a rejected financial distractor cannot suppress a supported price passage", () => {
+  const rows = [
+    {
+      bookId: "b",
+      unitIds: [1],
+      text: "تفتح قاعة المتحف الساعة العاشرة صباحًا.",
+      similarity: 0.95,
+    },
+    {
+      bookId: "b",
+      unitIds: [2],
+      text: "سعر تذكرة المتحف عشرون ريالًا، والدخول مجاني للأطفال دون السادسة.",
+      similarity: 0.87,
+    },
+  ];
+  assert.deepEqual(
+    selectSemanticPassages(rows, "كم سعر تذكرة المتحف؟").map((r) => r.unitIds),
+    [[2]],
+  );
+});
+test("a passage missing time evidence cannot suppress the passage with the actual deadline", () => {
+  const rows = [
+    {
+      bookId: "b",
+      unitIds: [1],
+      text: "الشهادة ترسل بالبريد الإلكتروني.",
+      similarity: 0.95,
+    },
+    {
+      bookId: "b",
+      unitIds: [2],
+      text: "ترسل الشهادة بعد ثلاثة أيام من اعتماد الطلب.",
+      similarity: 0.87,
+    },
+  ];
+  assert.deepEqual(
+    selectSemanticPassages(rows, "متى ترسل الشهادة؟").map((r) => r.unitIds),
+    [[2]],
+  );
+});

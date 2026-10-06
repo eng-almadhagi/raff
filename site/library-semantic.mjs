@@ -1,6 +1,6 @@
-import { libraryTerms } from "./library-core.mjs?v=0.16.0";
-import { libraryDB } from "./library-store.mjs?v=0.16.0";
-import { assessIntent } from "./query-intent.mjs?v=0.16.0";
+import { libraryTerms } from "./library-core.mjs?v=0.16.1";
+import { libraryDB } from "./library-store.mjs?v=0.16.1";
+import { assessIntent } from "./query-intent.mjs?v=0.16.1";
 
 const VERSION = "e5-q8-passages-v3";
 export function lexicalCandidates(books, question) {
@@ -96,7 +96,20 @@ export function selectSemanticPassages(rows, question) {
     /حجز|تسجيل|اشتراك|عضوية|عضويه|[أا]سجل|\b(?:register|registration|booking|reservation|membership)\b/iu.test(
       question,
     );
+  const asksMoney =
+    /راتب|رواتب|سعر|ثمن|تكلف|رسوم|مبلغ|كم.*ادفع|\b(?:salary|cost|price|fee|pay)\b/iu.test(
+      question,
+    );
   const ordered = rows
+    .filter(
+      (row) =>
+        assessIntent(question, { text: row.text }, { passage: true }).kind ===
+          "direct" &&
+        (!asksMoney ||
+          /راتب|رواتب|اجر|أجر|أجور|اجور|سعر|ثمن|تكلف|رسوم|مبلغ|مجان|ريال|دولار|جنيه|دينار|درهم|يورو|\b(?:salary|cost|price|fee|pay|free|dollar|euro)\b/iu.test(
+            row.text,
+          )),
+    )
     .filter(
       (row) =>
         !registration ||
@@ -113,15 +126,7 @@ export function selectSemanticPassages(rows, question) {
       const coverage = query.length
         ? query.filter((t) => tokens.has(t)).length / query.length
         : 0;
-      const asksMoney =
-        /راتب|رواتب|سعر|ثمن|تكلف|رسوم|مبلغ|كم.*ادفع|\b(?:salary|cost|price|fee|pay)\b/iu.test(
-          question,
-        );
-      const hasMoneyEvidence =
-        /راتب|رواتب|اجر|أجر|أجور|اجور|سعر|ثمن|تكلف|رسوم|مبلغ|مجان|ريال|دولار|جنيه|دينار|درهم|يورو|\b(?:salary|cost|price|fee|pay|free|dollar|euro)\b/iu.test(
-          row.text,
-        );
-      // Relevance gates are evaluated on passages, not titles or user query echoes alone.
+      // Only evidence-compatible passages can set the best score or margin.
       const competitor =
         ordered.find(
           (r) =>
@@ -129,9 +134,6 @@ export function selectSemanticPassages(rows, question) {
             !r.unitIds.some((id) => row.unitIds.includes(id)),
         )?.similarity || 0;
       const adequate =
-        assessIntent(question, { text: row.text }, { passage: true }).kind ===
-          "direct" &&
-        (!asksMoney || hasMoneyEvidence) &&
         row.similarity >= best - 0.025 &&
         ((row.similarity >= 0.84 && coverage >= 0.4) ||
           row.similarity >= 0.89 ||

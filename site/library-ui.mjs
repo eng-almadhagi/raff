@@ -5,12 +5,12 @@ import {
   decodeBackup,
   mergeSnapshot,
   MAX_BACKUP_BYTES,
-} from "./library-vault.mjs?v=0.16.0";
+} from "./library-vault.mjs?v=0.16.1";
 import {
   classifyLibraryPolicy,
   policyMessages,
   clarificationChoices,
-} from "./policy.mjs?v=0.16.0";
+} from "./policy.mjs?v=0.16.1";
 
 export function createLibrary({
   panel,
@@ -875,7 +875,7 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.16.0", import.meta.url),
+      new URL("./library-worker.mjs?v=0.16.1", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
@@ -1018,8 +1018,8 @@ export function createLibrary({
         node(
           "p",
           tr(
-            "لم نعثر على مقطع وثيق الصلة بالسؤال. تحقق من اختيار الكتاب ولغته ومن النص المستخرج، أو حدّد موضوع السؤال أكثر. لا نملأ النقص من خارج النطاق.",
-            "No sufficiently relevant passage was found. Check the selected book, its language and extracted text, or make the topic more specific. Nothing is filled in from outside the selected scope.",
+            "لم أجد في المقاطع المسترجعة نصًا يجيب عن سؤالك. قد يذكر الكتاب الموضوع دون المعلومة المطلوبة، وقد يفوت البحث موضعًا مناسبًا. راجع النص المحفوظ أو جرّب صياغة أخرى؛ لن أضيف معلومة من خارج الكتب المحددة.",
+            "I found no passage that answers your question. The book may mention the topic without the requested detail, or retrieval may have missed a relevant passage. Check the saved text or try another wording; I will not add information from outside the selected books.",
           ),
         ),
       );
