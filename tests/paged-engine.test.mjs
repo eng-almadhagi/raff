@@ -104,6 +104,10 @@ test("query normalization is reusable and leaves source strings untouched", () =
     /الجوارب الرقيق الشفاف/,
   );
   assert.equal(bucket("abc"), 34);
+  assert.equal(
+    searchQuery("minimum rak’ahs", "en"),
+    searchQuery("least rakahs", "en"),
+  );
 });
 
 // Synthetic examples validate scope logic without embedding evaluation cases.

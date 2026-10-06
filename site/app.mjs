@@ -1,5 +1,5 @@
 import { normalize } from "./core.mjs";
-import { copy } from "./i18n.mjs?v=0.9.7";
+import { copy } from "./i18n.mjs?v=0.9.8";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -292,7 +292,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.9.7", import.meta.url),
+    new URL("./search-worker.mjs?v=0.9.8", import.meta.url),
     {
       type: "module",
     },

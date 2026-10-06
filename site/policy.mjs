@@ -97,6 +97,12 @@ export function classifyPolicy(question, language = "ar") {
     ].includes(q.replace(/[؟?.]+$/u, ""))
   )
     return "clarify";
+  if (
+    /^is\s+(?:this|that|it)\s+(?:not\s+)?(?:allowed|permissible|forbidden|haram|halal)[? .]*$/iu.test(
+      q,
+    )
+  )
+    return "clarify";
   const personal =
     "زوجتي زوجي طلقت طلاقي عقدي راتبي قرضي ميراثي ورثت اشتريت بعت اقترضت حلفت نذرت اجهضت دوائي صيامي زكاتي حجي نكاحي اني عندي ولدي بنتي نسيت سويت دفعت تزوجت افتني".split(
       " ",

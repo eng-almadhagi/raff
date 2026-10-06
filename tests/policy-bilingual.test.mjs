@@ -9,6 +9,15 @@ test("general jurisprudence is answerable in both languages", () => {
   assert.equal(route("ما حكم قراءة الفاتحة للمأموم؟"), "explain");
   assert.equal(route("هل يجوز الجمع؟"), "clarify");
 });
+test("unresolved demonstratives require a subject before retrieval", () => {
+  for (const q of [
+    "Is that forbidden?",
+    "Is it permissible?",
+    "Is this not allowed?",
+  ])
+    assert.equal(route(q, "en"), "clarify");
+  assert.equal(route("Is eating camel meat allowed?", "en"), "explain");
+});
 test("personal facts and invented evidence are routed separately", () => {
   assert.equal(
     route(

@@ -143,5 +143,12 @@ test("temporal evidence must refer to the requested event", () => {
 });
 
 test("a retained question marker is not evidence from the answer", () => {
-  assert.equal(answerSupportsQuestion({text:"عنوان س ما فضل الاختبار؟ ج هذا وصف الجهاز."},"فضل الاختبار",vocabulary),false);
+  assert.equal(
+    answerSupportsQuestion(
+      { text: "عنوان س ما فضل الاختبار؟ ج هذا وصف الجهاز." },
+      "فضل الاختبار",
+      vocabulary,
+    ),
+    false,
+  );
 });

@@ -3,13 +3,13 @@ import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.8.1";
+} from "./policy.mjs?v=0.9.8";
 import {
   prepareSubjects,
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.9.7";
+} from "./relevance.mjs?v=0.9.8";
 
 export const bucket = (text) => {
   let h = 0;
@@ -35,6 +35,7 @@ const decode = (buffer) => {
 export function searchQuery(question, language) {
   if (language === "en")
     return question
+      .replace(/rak[’'‘`-]?a[’']?h?s?/giu, "rakahs")
       .replace(/\b(?:least|fewest)\b/giu, "minimum")
       .replace(
         /^(?:what (?:is said|do (?:your|the) sources say) about)\s*/iu,

@@ -114,7 +114,10 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
   // Some retained book units contain their original س/ج markers rather than a
   // separate answer field. Validate against the answer, not the quoted question.
   // The displayed source text is left intact.
-  const answer = unit.answer || unit.text?.match(/\sس\s[\s\S]+?\sج\s+([\s\S]+)/u)?.[1] || unit.text;
+  const answer =
+    unit.answer ||
+    unit.text?.match(/\sس\s[\s\S]+?\sج\s+([\s\S]+)/u)?.[1] ||
+    unit.text;
   if (!question || !answer) return false;
   const temporalObject = normalize(question).match(
     /قبل\s+([\p{L}]+).+بعد/u,
