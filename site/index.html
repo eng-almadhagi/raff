@@ -13,7 +13,7 @@
     />
     <title>رَفّ | من السؤال إلى المصدر</title>
     <link rel="icon" href="./logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./style.css?v=0.9.8" />
+    <link rel="stylesheet" href="./style.css?v=0.10.0" />
   </head>
   <body>
     <header>
@@ -27,6 +27,7 @@
         <button id="home" data-i18n="home">اسأل رَفّ</button
         ><button id="about" data-i18n="about">عن المشروع</button
         ><button id="method" data-i18n="method">المنهجية والمصادر</button>
+        <button id="library-nav">مكتبتي</button>
       </nav>
       <div class="header-tools">
         <div
@@ -65,6 +66,7 @@
         <div class="facts" id="facts"></div>
       </section>
       <section id="search-panel" class="search-panel" aria-label="Search">
+        <div id="library-scope"></div>
         <span id="scope-label" class="field-label" data-i18n="scope"></span>
         <div
           id="book"
@@ -109,6 +111,7 @@
         <h2 data-i18n="about"></h2>
         <p data-i18n="aboutText"></p>
       </section>
+      <section id="library-panel" class="card" hidden></section>
       <section id="method-panel" class="card" hidden>
         <h2 data-i18n="method"></h2>
         <div id="method-content"></div>
@@ -119,6 +122,6 @@
       <span>Raff · رَفّ</span>
       <p data-i18n="footer"></p>
     </footer>
-    <script type="module" src="./app.mjs?v=0.9.8"></script>
+    <script type="module" src="./app.mjs?v=0.10.0"></script>
   </body>
 </html>

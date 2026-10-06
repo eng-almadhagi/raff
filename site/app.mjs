@@ -1,5 +1,6 @@
 import { normalize } from "./core.mjs";
-import { copy } from "./i18n.mjs?v=0.9.8";
+import { createLibrary } from "./library-ui.mjs";
+import { copy } from "./i18n.mjs?v=0.10.0";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -49,13 +50,15 @@ function failed() {
   $("retry-search").hidden = false;
   $("submit").disabled = !ready;
 }
-let page = ["about", "method"].includes(location.hash.slice(1))
+let page = ["about", "method", "library"].includes(location.hash.slice(1))
   ? location.hash.slice(1)
   : "ask";
 const initialLanguage = new URL(location.href).searchParams.get("lang");
 if (initialLanguage === "en") language = "en";
 function show(section) {
-  const destination = ["about", "method"].includes(section) ? section : "ask";
+  const destination = ["about", "method", "library"].includes(section)
+    ? section
+    : "ask";
   page = destination;
   for (const id of [
     "intro",
@@ -64,9 +67,18 @@ function show(section) {
     "release-note",
     "result",
   ])
-    $(id).hidden = page !== "ask" || (id === "intro" && section === "result");
+    $(id).hidden =
+      page !== "ask" ||
+      (id === "intro" && section === "result") ||
+      (["intro", "starter"].includes(id) &&
+        $("library-scope").dataset.mode === "private");
   $("about-panel").hidden = page !== "about";
   $("method-panel").hidden = page !== "method";
+  $("library-panel").hidden = page !== "library";
+  $("library-nav").setAttribute(
+    "aria-current",
+    page === "library" ? "page" : "false",
+  );
   for (const id of ["home", "about", "method"])
     $(id).setAttribute(
       "aria-current",
@@ -80,6 +92,26 @@ function show(section) {
 }
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 show(page);
+const personalLibrary = createLibrary({
+  panel: $("library-panel"),
+  scope: $("library-scope"),
+  getLanguage: () => language,
+  navigate: show,
+  changed: () => {
+    generation++;
+    worker?.terminate();
+    worker = undefined;
+    $("result").replaceChildren();
+    lastQuestion = "";
+    if (personalLibrary.active) {
+      setBusy(false);
+      ready = true;
+      $("submit").disabled = false;
+      status(t().ready);
+      $("search-metrics").hidden = true;
+    } else initialize();
+  },
+});
 function open(source, id) {
   if (!ready || busy) return;
   setBusy(true);
@@ -274,6 +306,16 @@ function renderAnswer(data) {
   }
 }
 function initialize() {
+  if (personalLibrary.active) {
+    generation++;
+    worker?.terminate();
+    worker = undefined;
+    ready = true;
+    setBusy(false);
+    $("submit").disabled = false;
+    status(t().ready);
+    return;
+  }
   const currentGeneration = ++generation;
   const interrupted = busy;
   status(t().loading);
@@ -292,7 +334,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.9.8", import.meta.url),
+    new URL("./search-worker.mjs?v=0.10.0", import.meta.url),
     {
       type: "module",
     },
@@ -335,6 +377,7 @@ function initialize() {
   worker.postMessage({ type: "init", catalog: sources(), language });
 }
 function translate() {
+  $("library-nav").textContent = language === "ar" ? "مكتبتي" : "My library";
   document.documentElement.lang = language;
   document.documentElement.dir = t().dir;
   document.title =
@@ -344,6 +387,13 @@ function translate() {
   for (const n of document.querySelectorAll("[data-i18n]"))
     n.textContent = t()[n.dataset.i18n];
   $("brand-name").textContent = language === "ar" ? "رَفّ" : "Raff";
+  document
+    .querySelector('[data-i18n="aboutText"]')
+    .prepend(
+      language === "ar"
+        ? "سُمّي رَفّ ليكون مكتبة علمية تنمو مع الباحث: ينشئ رفوفه ويضيف كتبه ويختار نطاق بحثه. تدعم «مكتبتي» الآن الكتب النصية المحفوظة في متصفحك، بفهرسة لفظية مستقلة عن المصادر العامة. "
+        : "Raff means a shelf: a research library that grows with you. Create shelves, add books and choose where to search. My library currently indexes text books locally in your browser, separately from the public sources. ",
+    );
   $("question").placeholder = t().placeholder;
   $("release-note").textContent = t().disclosure;
   for (const b of $("language").querySelectorAll("button"))
@@ -490,7 +540,7 @@ function translate() {
     ),
   );
 }
-function ask() {
+async function ask() {
   if (!ready || busy) return;
   lastQuestion = $("question").value.trim();
   if (lastQuestion.length < 2) return;
@@ -498,6 +548,20 @@ function ask() {
   $("result").replaceChildren();
   $("submit").disabled = true;
   status(t().searching);
+  if (personalLibrary.active) {
+    const requestGeneration = generation;
+    try {
+      const result = await personalLibrary.search(lastQuestion);
+      if (requestGeneration !== generation) return;
+      $("result").replaceChildren(result);
+      setBusy(false);
+      $("submit").disabled = false;
+      status(t().complete);
+    } catch {
+      if (requestGeneration === generation) failed();
+    }
+    return;
+  }
   worker.postMessage({
     type: "ask",
     question: lastQuestion,
@@ -516,12 +580,14 @@ $("retry-search").onclick = () => {
 $("home").onclick = () => show("home");
 $("about").onclick = () => show("about");
 $("method").onclick = () => show("method");
+$("library-nav").onclick = () => show("library");
 function changeScope() {
   const currentPage = page;
   $("result").replaceChildren();
 
   lastQuestion = "";
   translate();
+  personalLibrary.render();
   initialize();
   show(currentPage);
 }
