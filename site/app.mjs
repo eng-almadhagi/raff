@@ -252,7 +252,7 @@ function initialize() {
     status(t().disabled);
     return;
   }
-  worker = new Worker(new URL("./search-worker.mjs", import.meta.url), {
+  worker = new Worker(new URL("./search-worker.mjs?v=0.9.1", import.meta.url), {
     type: "module",
   });
   worker.onmessage = ({ data }) => {

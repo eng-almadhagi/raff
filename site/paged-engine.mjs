@@ -9,7 +9,7 @@ import {
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs";
+} from "./relevance.mjs?v=0.9.1";
 
 export const bucket = (text) => {
   let h = 0;
