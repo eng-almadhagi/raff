@@ -252,7 +252,7 @@ function initialize() {
     status(t().disabled);
     return;
   }
-  worker = new Worker(new URL("./search-worker.mjs?v=0.9.1", import.meta.url), {
+  worker = new Worker(new URL("./search-worker.mjs?v=0.9.2", import.meta.url), {
     type: "module",
   });
   worker.onmessage = ({ data }) => {
@@ -363,7 +363,7 @@ function translate() {
     method.append(
       el(
         "p",
-        `${m.title}: ${m.units} / ${m.semantic_units} ${language === "ar" ? "وحدة ذات فهرس دلالي؛ الأعداد لا تعني اعتمادًا علميًا." : "units with semantic vectors; counts do not constitute scholarly validation."}`,
+        `${m.title}: ${m.semantic_units} / ${m.units} ${language === "ar" ? "وحدة ذات فهرس دلالي؛ الأعداد لا تعني اعتمادًا علميًا." : "units with semantic vectors; counts do not constitute scholarly validation."}`,
       ),
     );
   method.append(

@@ -1,4 +1,4 @@
-import { terms } from "./core.mjs";
+import { terms, normalize } from "./core.mjs";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
@@ -23,6 +23,10 @@ const topicForms = {
   اختلاف: "خلاف",
   اختلف: "خلاف",
   يختلف: "خلاف",
+  تختلف: "خلاف",
+  يختلفون: "خلاف",
+  اختلفوا: "خلاف",
+  مختلف: "خلاف",
   اختلافات: "خلاف",
   فتاوي: "فتوى",
   اجر: "فضل",
@@ -55,6 +59,17 @@ framing.add("through");
 framing.add("ادلة");
 framing.add("دليل");
 for (const word of [
+  "consist",
+  "consists",
+  "single",
+  "لماذا",
+  "why",
+  "مقارنة",
+  "مقارنه",
+  "فرق",
+])
+  framing.add(word);
+for (const word of [
   "معد",
   "معدة",
   "يتم",
@@ -80,7 +95,13 @@ const canonical = (t) =>
     : t);
 export function intentTerms(text, vocabulary) {
   text = text.replace(/rak[’'‘-]?a[’']?h?s?/giu, "rakah");
-  const filtered = terms(text, vocabulary).filter((t) => !framing.has(t));
+  const lexicalVocabulary = {
+    ...vocabulary,
+    concepts: { ...vocabulary.concepts, اجر: "فضل" },
+  };
+  const filtered = terms(text, lexicalVocabulary).filter(
+    (t) => !framing.has(t),
+  );
   if (!filtered.length)
     return [...new Set(terms(text, vocabulary).map(canonical))];
   return [...new Set(filtered.map(canonical))];
@@ -89,6 +110,39 @@ export function intentTerms(text, vocabulary) {
 export function answerSupportsQuestion(unit, question, vocabulary) {
   const answer = unit.answer || unit.text;
   if (!question || !answer) return false;
+  const temporalObject = normalize(question).match(
+    /قبل\s+([\p{L}]+).+بعد/u,
+  )?.[1];
+  if (temporalObject && !normalize(answer).includes("قبل " + temporalObject))
+    return false;
+  const comparedWith = question.match(/مقارنة\s+ب(.+)/u)?.[1];
+  if (comparedWith) {
+    const answerTerms = intentTerms(answer, vocabulary);
+    const alternatives = { منفرد: ["منفرد", "فذ", "الفذ", "وحده"] };
+    if (
+      intentTerms(comparedWith, vocabulary).some(
+        (t) => !(alternatives[t] || [t]).some((a) => answerTerms.includes(a)),
+      )
+    )
+      return false;
+  }
+  if (
+    /(?:مقارن|الفرق|compare|compared|versus)/iu.test(question) &&
+    !/(?:افضل|أفضل|تفضل|اكثر|أكثر|درجة|ازكي|أزكى|اما|أما|بينما|قبل|بعد|than|compar|whereas)/iu.test(
+      answer,
+    )
+  )
+    return false;
+  // A general numerical question must not be answered by an unrelated accident
+  // or personal exception merely because the answer mentions that quantity.
+  if (
+    /(?:single|minimum|least|fewest)/iu.test(question) &&
+    /^(?:if |when |my |should he |should she |إذا|اذا|حكم من )/iu.test(
+      unit.title || "",
+    ) &&
+    !/^(?:if |when |my |إذا|اذا)/iu.test(question)
+  )
+    return false;
   if (
     /قبل.+بعد/u.test(question) &&
     (!(answer.includes("قبل") && answer.includes("بعد")) ||
@@ -104,6 +158,12 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
   )
     return false;
   if (requested.includes("فضل") && !body.includes("فضل")) return false;
+  if (
+    requested.includes("فضل") &&
+    /مقارنة/u.test(question) &&
+    !/(?:درجة|درجه|تفضل|أزكى|ازكي|أكثر أجرا|اكثر اجرا)/u.test(answer)
+  )
+    return false;
   if (
     requested.includes("خلاف") &&
     requested.includes("فتوى") &&
@@ -214,11 +274,11 @@ export function subjectMatch(query, entry, document) {
     anchor:
       document.title.has(query.anchor) || document.question.has(query.anchor),
     score:
-      0.3 * titleCoverage +
+      0.45 * titleCoverage +
       0.2 * questionCoverage +
       0.1 * precision +
-      0.15 * lead +
-      0.1 * prefix +
+      0.05 * lead +
+      0.05 * prefix +
       0.15 * ordered -
       penalty -
       (/(?:^|\s)(?:عن|for|over)(?:\s|$)/iu.test(question) &&

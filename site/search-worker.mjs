@@ -1,4 +1,4 @@
-import { PagedEngine, checked } from "./paged-engine.mjs?v=0.9.1";
+import { PagedEngine, checked } from "./paged-engine.mjs?v=0.9.2";
 let engine,
   extractor,
   language = "ar";

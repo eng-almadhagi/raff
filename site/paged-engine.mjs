@@ -9,7 +9,7 @@ import {
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.9.1";
+} from "./relevance.mjs?v=0.9.2";
 
 export const bucket = (text) => {
   let h = 0;
@@ -40,6 +40,7 @@ export function searchQuery(question, language) {
     );
   // Reusable colloquial vocabulary; source quotations are never transformed.
   let q = question
+    .replace(/لماذا\s+(?:تختلف|يختلف|يختلفون)/gu, "اختلاف")
     .replace(/ينفع/gu, "يجوز")
     .replace(/يبان/gu, "يظهر")
     .replace(/وش يقول المصدر عن/gu, "حكم");
@@ -69,6 +70,16 @@ export function searchQuery(question, language) {
 export function scopeConflict(question, entry) {
   const q = normalize(question),
     title = normalize(entry.title);
+  // A disagreement about one named subtopic is not an explanation of why
+  // fatwas differ in general. Keep general sources about fatwas eligible.
+  if (
+    /(?:خلاف|اختلاف)/u.test(q) &&
+    /(?:فتاوي|فتوى)/u.test(q) &&
+    !/\sفي\s/u.test(q) &&
+    /\sفي\s/u.test(title) &&
+    !/(?:فتاوي|فتوى)/u.test(title)
+  )
+    return true;
   // A named subtype must not be replaced by a general prayer introduction.
   const subtype = q.match(
     /(?:صلاه|صلاة) (الاستسقاء|الكسوف|الخسوف|التراويح|الجنازه|الجنازة|الجماعة|العيد)/u,
