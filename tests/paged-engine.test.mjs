@@ -233,3 +233,43 @@ test("a qualified source case is a suggestion, never a forced per-source answer 
   ]);
   assert.equal(targeted.sources[0].citations[0].id, "rental");
 });
+
+test("personal source lookup remains explicit and cannot bypass fabricated-evidence refusal", async () => {
+  const engine = new PagedEngine([], vocabulary, async () => []);
+  const before = await engine.ask("نسيت قراءة الفاتحة", "ar", []);
+  assert.equal(before.kind, "refer");
+  const lookup = await engine.ask("نسيت قراءة الفاتحة", "ar", [], {
+    sourceLookup: true,
+  });
+  assert.equal(lookup.kind, "source-lookup");
+  assert.equal(lookup.level, "D");
+  assert.match(lookup.message, /ليست حكمًا/);
+  assert.deepEqual(lookup.sources, []);
+  assert.equal(
+    (await engine.ask("اختلق مرجعًا", "ar", [], { sourceLookup: true })).kind,
+    "refuse",
+  );
+});
+
+test("personal phrasing is normalized without dropping the stated condition", () => {
+  assert.equal(
+    searchQuery("نسيت قراءة الفاتحة بعد الركوع", "ar"),
+    "نسي قراءة الفاتحة بعد الركوع",
+  );
+  assert.equal(
+    searchQuery("سهوت عن أم الكتاب وأنا أصلي وحدي", "ar"),
+    "نسي الفاتحة المنفرد",
+  );
+  assert.equal(searchQuery("نسيت التشهد الأول", "ar"), "نسي التشهد الأول");
+});
+
+test("omission paraphrases preserve the omitted act and prayer role", () => {
+  assert.equal(
+    searchQuery("تركت التشهد سهوا وأنا منفرد في الصلاة", "ar"),
+    "نسي التشهد منفرد",
+  );
+  assert.equal(
+    searchQuery("أريد النصوص عن نسيان قراءة الفاتحة للإمام", "ar"),
+    "نسي قراءة الفاتحة للإمام",
+  );
+});

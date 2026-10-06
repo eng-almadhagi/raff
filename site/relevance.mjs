@@ -1,5 +1,9 @@
-import { terms, normalize } from "./core.mjs?v=0.16.2";
-import { assessIntent, questionProfile } from "./query-intent.mjs?v=0.16.2";
+import { terms, normalize } from "./core.mjs?v=0.17.0";
+import {
+  assessIntent,
+  questionProfile,
+  prayerRoles,
+} from "./query-intent.mjs?v=0.17.0";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
@@ -21,6 +25,11 @@ const numberWords = {
   عشرة: "عشر",
 };
 const topicForms = {
+  نسيت: "نسي",
+  ونسي: "نسي",
+  نسيان: "نسي",
+  نسيانا: "نسي",
+  ناسيا: "نسي",
   يقرا: "قراءة",
   اقرا: "قراءة",
   اسمع: "استماع",
@@ -112,6 +121,12 @@ const canonical = (t) =>
     : t);
 const lexicalVocabularies = new WeakMap();
 export function intentTerms(text, vocabulary) {
+  text = text
+    .replace(
+      /(?:وأنا|وانا|أنا|انا)\s+(?:أصلي|اصلي)\s+(?:وحدي|لحالي)/gu,
+      "المنفرد",
+    )
+    .replace(/أم الكتاب|ام الكتاب/gu, "الفاتحة");
   text = text.replace(/rak[’'‘-]?a[’']?h?s?/giu, "rakah");
   if (!lexicalVocabularies.has(vocabulary))
     lexicalVocabularies.set(vocabulary, {
@@ -125,6 +140,24 @@ export function intentTerms(text, vocabulary) {
   if (!filtered.length)
     return [...new Set(terms(text, vocabulary).map(canonical))];
   return [...new Set(filtered.map(canonical))];
+}
+
+function subjectTerms(question, vocabulary) {
+  let all = intentTerms(question, vocabulary);
+  // The verb "read" is already checked as an action; when omission is explicit,
+  // don't require an otherwise specific source title to repeat that verb too.
+  if (all.includes("نسي") && all.length >= 3)
+    all = all.filter((t) => t !== "قراءة");
+  // Prayer role is an applicability constraint, checked separately from the topic.
+  if (
+    !prayerRoles(question).length ||
+    /مقارن|فضل|اجر|ثواب|compare|reward/iu.test(question)
+  )
+    return all;
+  const core = all.filter(
+    (t) => !/^(?:منفرد|منفردا|ماموم|ماموما|امام|اماما|alone)$/u.test(t),
+  );
+  return core.length >= 2 ? core : all;
 }
 
 export function answerSupportsQuestion(unit, question, vocabulary) {
@@ -180,7 +213,13 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
       /لا[^.\n]{0,100}قبل[^.\n]{0,100}ولا بعد/u.test(answer))
   )
     return false;
-  const requested = intentTerms(question, vocabulary);
+  const wantedRoles = prayerRoles(question);
+  const sourceRoles = prayerRoles(
+    (unit.title || "") + " " + (unit.question || "") + " " + answer,
+  );
+  if (wantedRoles.length && !wantedRoles.some((r) => sourceRoles.includes(r)))
+    return false;
+  const requested = subjectTerms(question, vocabulary);
   const body = intentTerms(answer, vocabulary);
   const titleTerms = intentTerms(unit.title || "", vocabulary);
   const titleCoverage =
@@ -207,6 +246,8 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
     return false;
   if (
     requested.length <= 2 &&
+    !questionProfile(question).constraints.includes("forgetfulness") &&
+    !prayerRoles(question).length &&
     titleCoverage >= 0.99 &&
     !(
       requested.length >= 2 && requested.every((t, i) => titleTerms[i] === t)
@@ -307,6 +348,28 @@ export function isRelatedCase(question, unit) {
         ? unit.question || ""
         : unit.title || "",
     );
+  // Reciting something after a named text is not reciting that named text.
+  if (
+    /فاتح[ةه]/u.test(q) &&
+    !/(?:سور[ةه]|قرآن|قران).{0,25}بعد.{0,12}فاتح/u.test(q) &&
+    /(?:سور[ةه]|قرآن|قران).{0,25}بعد.{0,12}فاتح/u.test(title)
+  )
+    return true;
+  // For omission questions, identify what was omitted in the source question.
+  // Incidental mentions later in the sentence cannot supply that relationship.
+  if (questionProfile(q).constraints.includes("forgetfulness")) {
+    const object = q.match(
+      /(?:نسي|نسيت|نسيان|ترك)\s+(?:قراء[ةه]\s+)?(?:ال)?([\p{L}]+)/u,
+    )?.[1];
+    const lead = title + " . " + normalize(unit.question || "");
+    if (object && /نسي|نسيان|ناسيا/u.test(lead)) {
+      const direct = new RegExp(
+        `(?:نسي|نسيت|نسيان|ترك)\\s+(?:[\\p{L}]+\\s+){0,2}(?:ال)?${object}|(?:ال)?${object}\\s+(?:[\\p{L}]+\\s+){0,2}(?:نسي|نسيان|ناسيا)`,
+        "u",
+      );
+      if (!direct.test(lead)) return true;
+    }
+  }
   const facets = [
     /اجر[ةه]|ايجار|تاجير|السكن|المحلات|\b(?:rent|rental|tenancy)\b/iu,
     /راتب|رواتب|\b(?:salary|salaries|wages)\b/iu,
@@ -355,7 +418,7 @@ export function restoreSubjects(rows, count) {
 }
 
 export function subjectQuery(question, frequencies, count, vocabulary) {
-  const wanted = intentTerms(question, vocabulary);
+  const wanted = subjectTerms(question, vocabulary);
   const weight = (t) =>
     Math.min(
       6,

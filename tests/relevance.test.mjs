@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   answerSupportsQuestion,
+  isRelatedCase,
   intentTerms,
   prepareSubjects,
   subjectQuery,
@@ -336,5 +337,30 @@ test("short unrelated answers are not evidence simply because they are short", (
       vocabulary,
     ),
     true,
+  );
+});
+
+test("omission subject is distinct from adjacent recitation and substitution", () => {
+  for (const unit of [
+    {
+      title: "إذا نسي سنة من سنن الصلاة",
+      question: "نسي قول آمين عند نهاية قراءة الفاتحة",
+    },
+    { title: "إذا نسي وقرأ الفاتحة بدلا من التشهد ماذا يفعل؟" },
+    {
+      title: "حكم الموالاة في قراءة الفاتحة",
+      question: "نسي بعض الكلمات أثناء القراءة",
+    },
+  ])
+    assert.equal(isRelatedCase("نسي قراءة الفاتحة", unit), true);
+  assert.equal(
+    isRelatedCase("نسي قراءة الفاتحة — المأموم", {
+      title: "ماذا يفعل المأموم إذا نسي قراءة الفاتحة؟",
+    }),
+    false,
+  );
+  assert.equal(
+    isRelatedCase("نسي قراءة التشهد", { title: "حكم نسيان قراءة التشهد" }),
+    false,
   );
 });

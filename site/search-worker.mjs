@@ -1,4 +1,4 @@
-import { PagedEngine, checked } from "./paged-engine.mjs?v=0.16.2";
+import { PagedEngine, checked } from "./paged-engine.mjs?v=0.17.0";
 let engine,
   extractor,
   modelSetupMilliseconds = 0,
@@ -63,7 +63,9 @@ onmessage = async ({ data }) => {
     if (data.type === "ask") {
       const started = performance.now();
       modelSetupMilliseconds = 0;
-      const result = await engine.ask(data.question, language, data.sourceIds);
+      const result = await engine.ask(data.question, language, data.sourceIds, {
+        sourceLookup: data.sourceLookup === true,
+      });
       postMessage({
         type: "answer",
         result,

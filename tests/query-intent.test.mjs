@@ -130,3 +130,20 @@ test("sermon greetings do not supply a date but explicit years do", () => {
     "direct",
   );
 });
+
+test("prayer roles cannot silently be exchanged in relevant-looking sources", () => {
+  assert.equal(
+    assessIntent("نسي قراءة الفاتحة — المنفرد", {
+      title: "إذا نسي المأموم قراءة الفاتحة",
+      answer: "إذا نسي المأموم القراءة.",
+    }).kind,
+    "related",
+  );
+  assert.equal(
+    assessIntent("نسي قراءة الفاتحة — المأموم", {
+      title: "إذا نسي المأموم قراءة الفاتحة",
+      answer: "إذا نسي المأموم القراءة.",
+    }).kind,
+    "direct",
+  );
+});

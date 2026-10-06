@@ -120,3 +120,13 @@ test("zakat clarification offers distinct searchable choices and preserves nisab
       assert.ok(choices.every((c) => c.question.includes("نصاب")));
   }
 });
+
+test("personal clarification offers source lookup without inserting an answer or dropping constraints", async () => {
+  const { clarificationChoices } = await import("../site/policy.mjs");
+  const q = "نسيت قراءة الفاتحة وتذكرت بعد الركوع";
+  const choices = clarificationChoices("refer", q, "ar");
+  assert.equal(choices.length, 4);
+  assert.ok(choices.every((c) => c.sourceLookup && c.question.startsWith(q)));
+  assert.equal(clarificationChoices("refer", "طلقت زوجتي", "ar").length, 1);
+  assert.equal(clarificationChoices("refuse", "اختلق نصا", "ar").length, 0);
+});

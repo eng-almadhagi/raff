@@ -1,10 +1,11 @@
-import { normalize } from "./core.mjs?v=0.16.2";
+import { prayerRoles } from "./query-intent.mjs?v=0.17.0";
+import { normalize } from "./core.mjs?v=0.17.0";
 
 export const policyMessages = {
   ar: {
     "clarify-zakat": "اختر نوع الزكاة لعرض النصوص التي تجيب عن سؤالك:",
     refer:
-      "هذا السؤال يتطلب معرفة تفاصيل حالتك من مختص مؤهل. لا يصدر رَفّ حكمًا شخصيًا نهائيًا. يمكنك البحث بصياغة عامة عن النصوص المنشورة ذات الصلة.",
+      "أستطيع مساعدتك في العثور على النصوص المنشورة، دون إصدار حكم على حالتك. اختر الوصف المناسب أو اعرض النصوص ذات الصلة، واذكر التفاصيل المؤثرة في المسألة.",
     clarify:
       "ما المقصود تحديدًا؟ اذكر المسألة والسياق دون بيانات شخصية حتى أبحث في النص المناسب.",
     insufficient:
@@ -26,7 +27,7 @@ export const policyMessages = {
     "clarify-zakat":
       "Choose the type of zakat to find source texts that answer your question:",
     refer:
-      "Your circumstances need a qualified scholar who can examine the details. Raff does not issue a final personal ruling. You may ask a general question to find relevant published source texts.",
+      "I can help you find published source texts without issuing a ruling on your circumstances. Choose the relevant description or view related texts, and include the details that affect the question.",
     clarify:
       "Which issue do you mean? Please specify the action and context without sharing personal details.",
     insufficient:
@@ -149,6 +150,42 @@ export function classifyPolicy(question, language = "ar") {
 }
 
 export function clarificationChoices(kind, question, language = "ar") {
+  if (kind === "refer") {
+    const choices = [];
+    if (
+      /فاتح[ةه]|أم الكتاب|ام الكتاب|fatiha/iu.test(question) &&
+      !prayerRoles(question).length
+    ) {
+      const roles =
+        language === "en"
+          ? [
+              ["Praying alone", "praying alone"],
+              ["Following the imam", "following the imam"],
+              ["Leading the prayer", "leading the prayer"],
+            ]
+          : [
+              ["منفرد", "المنفرد"],
+              ["مأموم", "المأموم"],
+              ["إمام", "الإمام"],
+            ];
+      for (const [label, role] of roles)
+        choices.push({
+          label,
+          question:
+            question + (language === "en" ? ` — ${role}` : ` — ${role}`),
+          sourceLookup: true,
+        });
+    }
+    choices.push({
+      label:
+        language === "en"
+          ? "Find related published texts"
+          : "عرض النصوص المنشورة ذات الصلة",
+      question,
+      sourceLookup: true,
+    });
+    return choices;
+  }
   if (kind !== "clarify-zakat") return [];
   const types =
     language === "en"

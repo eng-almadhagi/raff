@@ -1,7 +1,7 @@
-import { normalize } from "./core.mjs?v=0.16.2";
-import { createLibrary } from "./library-ui.mjs?v=0.16.2";
-import { copy } from "./i18n.mjs?v=0.16.2";
-import { clarificationChoices } from "./policy.mjs?v=0.16.2";
+import { normalize } from "./core.mjs?v=0.17.0";
+import { createLibrary } from "./library-ui.mjs?v=0.17.0";
+import { copy } from "./i18n.mjs?v=0.17.0";
+import { clarificationChoices } from "./policy.mjs?v=0.17.0";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -249,7 +249,7 @@ function renderAnswer(data) {
       button.type = "button";
       button.onclick = () => {
         $("question").value = choice.question;
-        ask();
+        ask(choice.sourceLookup === true);
       };
       controls.append(button);
     }
@@ -271,7 +271,7 @@ function renderAnswer(data) {
       group.append(sourceCard(c, data.result.openFull));
     if (s.kind === "error") {
       const b = el("button", t().retry);
-      b.onclick = () => ask();
+      b.onclick = () => ask(lastSourceLookup);
       group.append(b);
     }
     a.append(group);
@@ -343,7 +343,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.16.2", import.meta.url),
+    new URL("./search-worker.mjs?v=0.17.0", import.meta.url),
     {
       type: "module",
     },
@@ -601,10 +601,12 @@ function translate() {
     ),
   );
 }
-async function ask() {
+let lastSourceLookup = false;
+async function ask(sourceLookup = false) {
   if (!ready || busy) return;
   lastQuestion = $("question").value.trim();
   if (lastQuestion.length < 2) return;
+  lastSourceLookup = sourceLookup === true;
   setBusy(true);
   $("result").replaceChildren();
   $("submit").disabled = true;
@@ -613,6 +615,7 @@ async function ask() {
     type: "ask",
     question: lastQuestion,
     sourceIds: selected(),
+    sourceLookup: sourceLookup === true,
   });
 }
 $("question").onkeydown = (e) => {
@@ -625,7 +628,7 @@ $("ask-form").onsubmit = (e) => {
   ask();
 };
 $("retry-search").onclick = () => {
-  if (ready) ask();
+  if (ready) ask(lastSourceLookup);
   else if (catalog.length) initialize();
   else location.reload();
 };

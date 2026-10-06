@@ -5,12 +5,12 @@ import {
   decodeBackup,
   mergeSnapshot,
   MAX_BACKUP_BYTES,
-} from "./library-vault.mjs?v=0.16.2";
+} from "./library-vault.mjs?v=0.17.0";
 import {
   classifyLibraryPolicy,
   policyMessages,
   clarificationChoices,
-} from "./policy.mjs?v=0.16.2";
+} from "./policy.mjs?v=0.17.0";
 
 export function createLibrary({
   panel,
@@ -867,7 +867,7 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.16.2", import.meta.url),
+      new URL("./library-worker.mjs?v=0.17.0", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
@@ -946,7 +946,7 @@ export function createLibrary({
         policy,
         question,
         getLanguage(),
-      ))
+      ).filter((choice) => !choice.sourceLookup))
         controls.append(
           button(choice.label, () => {
             questionInput.value = choice.question;

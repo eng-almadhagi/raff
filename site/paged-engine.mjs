@@ -3,12 +3,12 @@ import {
   evidence,
   normalize,
   focusedPreview,
-} from "./core.mjs?v=0.16.2";
+} from "./core.mjs?v=0.17.0";
 import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.16.2";
+} from "./policy.mjs?v=0.17.0";
 import {
   prepareSubjects,
   restoreSubjects,
@@ -16,7 +16,7 @@ import {
   subjectMatch,
   answerSupportsQuestion,
   isRelatedCase,
-} from "./relevance.mjs?v=0.16.2";
+} from "./relevance.mjs?v=0.17.0";
 
 export const bucket = (text) => {
   let h = 0;
@@ -54,6 +54,17 @@ export function searchQuery(question, language) {
       );
   // Reusable colloquial vocabulary; source quotations are never transformed.
   let q = question
+    .replace(
+      /(?:وأنا|وانا|أنا|انا)\s+(منفرد|مأموم|ماموم|إمام|امام)(?:\s+في الصلاة)?/gu,
+      "$1",
+    )
+    .replace(/(?:تركت|تركنا|ترك)\s+([^،؟.!]{1,70}?)\s+سهوا[ً]?/gu, "نسي $1")
+    .replace(
+      /(?:وأنا|وانا|أنا|انا)\s+(?:أصلي|اصلي)\s+(?:وحدي|لحالي)/gu,
+      "المنفرد",
+    )
+    .replace(/(?:نسيت|نسينا|نسيان|سهوت عن|سها عن)/gu, "نسي")
+    .replace(/أم الكتاب|ام الكتاب/gu, "الفاتحة")
     .replace(/(?:أجر|اجر)\s+(?=(?:الصلاة|صلاة|الصيام|الصوم|الصدقة))/gu, "ثواب ")
     .replace(/(?:أداء\s+)?الصلاة\s+(?:مع|في)\s+(?:ال)?جماعة/gu, "صلاة الجماعة")
     .replace(/لماذا\s+(?:تختلف|يختلف|يختلفون)/gu, "اختلاف")
@@ -67,7 +78,7 @@ export function searchQuery(question, language) {
   // improves both dense intent and lexical coverage without answer-specific rules.
   q = q
     .replace(
-      /^(?:ما المذكور عن|اعرض ما ورد عن|[أا]عطني فتو[ىي] عن|هل توجد [أا]قوال مختلف[هة] في)\s*/u,
+      /^(?:ما المذكور عن|[أا]ريد النصوص عن|اعرض ما ورد عن|[أا]عطني فتو[ىي] عن|هل توجد [أا]قوال مختلف[هة] في)\s*/u,
       "",
     )
     .replace(
@@ -168,7 +179,11 @@ export function scopeConflict(question, entry) {
   );
 }
 export async function checked(url, hash, binary = false, compressed = false) {
-  const response = await fetch(url + (compressed ? ".gz" : ""));
+  const response = await fetch(
+    url +
+      (compressed ? ".gz" : "") +
+      (hash ? `?sha=${encodeURIComponent(hash)}` : ""),
+  );
   if (!response.ok) throw Error(`HTTP ${response.status}`);
   const buffer = await response.arrayBuffer();
   if (hash) {
@@ -444,7 +459,7 @@ export class PagedEngine {
     });
     return { rows: unique, missing };
   }
-  async ask(question, language, sourceIds) {
+  async ask(question, language, sourceIds, { sourceLookup = false } = {}) {
     this.lastPreparationMilliseconds = 0;
     const kind = classifyPolicy(question, language),
       messages = policyMessages[language],
@@ -483,7 +498,8 @@ export class PagedEngine {
       };
     }
     this.last.delete(language);
-    if (messages[kind] && reference === null)
+    const personalLookup = kind === "refer" && sourceLookup === true;
+    if (messages[kind] && reference === null && !personalLookup)
       return {
         kind,
         level: kind === "refer" ? "D" : null,
@@ -596,7 +612,7 @@ export class PagedEngine {
             (r.coverage >= 0.25 && r.focus >= 0.875) ||
             (r.coverage >= 0.4 && r.dense >= 0.855) ||
             (r.subject.titleCoverage >= 0.95 &&
-              r.subject.lead &&
+              (r.subject.lead || r.subject.ordered) &&
               r.focus >= 0.82)) &&
           (Math.max(r.subject.titleCoverage, r.subject.questionCoverage) >=
             0.4 ||
@@ -624,7 +640,6 @@ export class PagedEngine {
         // A small score margin among relevant fatwas is not linguistic ambiguity.
         // Ambiguous questions are handled by policy before retrieval.
         const selected = eligible
-            .filter((r) => enough(r) && r.score >= best.score - 0.2)
             .sort(
               (a, b) =>
                 b.score +
@@ -635,6 +650,7 @@ export class PagedEngine {
             .slice(0, 20),
           citations = [],
           suggestions = [];
+        let acceptedScore = null;
         for (const r of selected) {
           const c = await this.citation(meta, r.id, false, question);
           if (isRelatedCase(query, c)) {
@@ -643,9 +659,11 @@ export class PagedEngine {
             continue;
           }
           if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
-          if (citations.length && r.score < best.score - 0.04) continue;
+          if (acceptedScore !== null && r.score < acceptedScore - 0.04)
+            continue;
           if (!citations.some((p) => p.text === c.text))
             citations.push(await this.citation(meta, r.id, true, question));
+          if (acceptedScore === null) acceptedScore = r.score;
           if (citations.length >= (plural ? 2 : 1)) break;
         }
         sources.push({
@@ -681,15 +699,23 @@ export class PagedEngine {
         })),
       );
     return {
-      kind,
-      level: { information: "A", explain: "B", qualified: "C" }[kind],
-      message: !cited.length
-        ? language === "ar"
-          ? "لم نعثر على نص كافٍ يجيب مباشرة عن هذا السؤال في المصادر المحددة."
-          : "No sufficiently direct answer was found in the selected sources."
-        : language === "ar"
-          ? "النصوص المناسبة لسؤالك فقط، مع فصل المصادر دون دمج الأقوال أو ترجيح بينها."
-          : "Only relevant source answers are shown, separately and without independently preferring an opinion.",
+      kind: personalLookup ? "source-lookup" : kind,
+      level: personalLookup
+        ? "D"
+        : { information: "A", explain: "B", qualified: "C" }[kind],
+      message:
+        (personalLookup
+          ? language === "ar"
+            ? "هذه نصوص منشورة للمراجعة، وليست حكمًا على حالتك. يتوقف انطباقها على التفاصيل والشروط؛ ارجع إلى مختص قبل تطبيقها. "
+            : "These are published texts for review, not a ruling on your circumstances. Applicability depends on the details and conditions; consult a qualified scholar. "
+          : "") +
+        (!cited.length
+          ? language === "ar"
+            ? "لم نعثر على نص كافٍ يجيب مباشرة عن هذا السؤال في المصادر المحددة."
+            : "No sufficiently direct answer was found in the selected sources."
+          : language === "ar"
+            ? "النصوص المناسبة لسؤالك فقط، مع فصل المصادر دون دمج الأقوال أو ترجيح بينها."
+            : "Only relevant source answers are shown, separately and without independently preferring an opinion."),
       sources,
     };
   }

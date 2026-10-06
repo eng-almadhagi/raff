@@ -1,4 +1,4 @@
-import { normalize } from "./core.mjs?v=0.16.2";
+import { normalize } from "./core.mjs?v=0.17.0";
 
 // Shared question/answer compatibility, independent of books, IDs and test queries.
 // These describe actions and constraints, not religious conclusions.
@@ -77,13 +77,17 @@ const actions = [
   ),
 ];
 const constraints = [
+  [
+    "substitution",
+    /بدلا|بدل |استبدال|عوضا|\b(?:instead of|replace|replacement)\b/iu,
+  ],
   ["coating", /مطلي|مطلية|طلاء|\b(?:plated|plating|coating)\b/iu],
   ["herbal", /نباتي|عشبي|\b(?:herbal|plant-based)\b/iu],
   ["military", /عسكري|العسكر|\bmilitary\b/iu],
   ["non-muslim-audience", /غير المسلمين|للكفار|\bnon-Muslims?\b/iu],
   [
     "digital-device",
-    /الحاسب|الحاسوب|الهاتف|الجوال|\b(?:computer|phone|mobile)\b/iu,
+    /الحاسب|الحاسوب|الهاتف|الجوال|الكتروني|إلكتروني|عداد|\b(?:computer|phone|mobile|electronic|counter)\b/iu,
   ],
   ["witr", /الوتر|\bwitr\b/iu],
   ["funeral", /الجناز[ةه]|الجنائز|\bfuneral\b/iu],
@@ -128,6 +132,29 @@ export function questionProfile(text) {
       .map(([id]) => id),
   };
 }
+export function prayerRoles(text) {
+  const q = normalize(text);
+  return [
+    ["alone", /منفرد|وحدي|وحده|لحالي|\b(?:alone|by myself)\b/u],
+    [
+      "follower",
+      /ماموم|خلف الامام|وراء الامام|\b(?:behind|following) (?:the )?imam\b/u,
+    ],
+    [
+      "leader",
+      /(?:^|\s)(?:لل|ل|ال)?امام(?:ا|ًا)?(?=\s|[،؟?.]|$)|\bleading (?:the )?prayer\b/u,
+    ],
+  ]
+    .filter(([, re]) => re.test(q))
+    .map(([role]) => role)
+    .filter(
+      (role) =>
+        role !== "leader" ||
+        !/خلف الامام|وراء الامام|\b(?:behind|following) (?:the )?imam\b/u.test(
+          q,
+        ),
+    );
+}
 export function assessIntent(question, unit, { passage = false } = {}) {
   const requested = questionProfile(question);
   const heading = /عنوان غير متاح|untitled/iu.test(unit.title || "")
@@ -139,6 +166,22 @@ export function assessIntent(question, unit, { passage = false } = {}) {
   const answer = unit.answer || unit.text || "";
   const supplied = questionProfile((unit.question || "") + " " + answer);
   const reasons = [];
+  if (!passage) {
+    const wantedRoles = prayerRoles(question),
+      titledRoles = prayerRoles(heading);
+    if (
+      wantedRoles.length &&
+      titledRoles.length &&
+      !wantedRoles.some((r) => titledRoles.includes(r))
+    )
+      reasons.push("different-prayer-role");
+    if (
+      !wantedRoles.length &&
+      titledRoles.length &&
+      /فاتح[ةه]|تشهد|ركع|سجد/iu.test(normalize(question))
+    )
+      reasons.push("narrower-prayer-role");
+  }
   if (
     requested.actions.length &&
     source.actions.length &&
@@ -170,7 +213,10 @@ export function assessIntent(question, unit, { passage = false } = {}) {
     reasons.push("missing-circumstance");
   if (answer) {
     // A sermon greeting ("أما بعد") is not a temporal relation.
-    const a = normalize(answer).replace(/اما\s+بعد(?=\s|[:،,.؛»]|$)\s*[:،,.؛»]?/gu, "");
+    const a = normalize(answer).replace(
+      /اما\s+بعد(?=\s|[:،,.؛»]|$)\s*[:،,.؛»]?/gu,
+      "",
+    );
     if (
       requested.type === "time" &&
       source.type !== "time" &&
