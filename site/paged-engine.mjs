@@ -9,7 +9,7 @@ import {
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.9.5";
+} from "./relevance.mjs?v=0.9.6";
 
 export const bucket = (text) => {
   let h = 0;
@@ -34,12 +34,16 @@ const decode = (buffer) => {
 };
 export function searchQuery(question, language) {
   if (language === "en")
-    return question.replace(
-      /^(?:what (?:is said|do (?:your|the) sources say) about)\s*/iu,
-      "",
-    );
+    return question
+      .replace(/\b(?:least|fewest)\b/giu, "minimum")
+      .replace(
+        /^(?:what (?:is said|do (?:your|the) sources say) about)\s*/iu,
+        "",
+      );
   // Reusable colloquial vocabulary; source quotations are never transformed.
   let q = question
+    .replace(/(?:أجر|اجر)\s+(?=(?:الصلاة|صلاة|الصيام|الصوم|الصدقة))/gu, "ثواب ")
+    .replace(/(?:أداء\s+)?الصلاة\s+(?:مع|في)\s+(?:ال)?جماعة/gu, "صلاة الجماعة")
     .replace(/لماذا\s+(?:تختلف|يختلف|يختلفون)/gu, "اختلاف")
     .replace(/ينفع/gu, "يجوز")
     .replace(/يبان/gu, "يظهر")
@@ -88,7 +92,12 @@ export function scopeConflict(question, entry) {
     return true;
   // Explicit exceptional contexts in a title must not silently become the
   // answer to a general query that never asked about that context.
-  for (const facet of [/(?:صمم|اصم|deaf)/iu, /(?:نذر|نذرت|vow|oath)/iu])
+  for (const facet of [
+    /(?:صمم|اصم|deaf)/iu,
+    /(?:نذر|نذرت|vow|oath)/iu,
+    /(?:نساء|امراة|المراة|woman|women)/iu,
+    /(?:تخمين|تقدير|estimate|estimating)/iu,
+  ])
     if (facet.test(title) && !facet.test(q)) return true;
   if (
     /بين.+و/u.test(q) &&
@@ -511,10 +520,11 @@ export class PagedEngine {
             .slice(0, 20),
           citations = [];
         for (const r of selected) {
-          const c = await this.citation(meta, r.id, true, question);
+          const c = await this.citation(meta, r.id, false, question);
           if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
           if (citations.length && r.score < best.score - 0.04) continue;
-          if (!citations.some((p) => p.text === c.text)) citations.push(c);
+          if (!citations.some((p) => p.text === c.text))
+            citations.push(await this.citation(meta, r.id, true, question));
           if (citations.length >= (plural ? 2 : 1)) break;
         }
         sources.push({
