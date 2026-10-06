@@ -1,9 +1,8 @@
-import { normalize } from "./core.mjs?v=0.13.1";
+import { normalize } from "./core.mjs?v=0.14.2";
 
 export const policyMessages = {
   ar: {
-    "clarify-zakat":
-      "أي نوع من الزكاة تقصد: زكاة النقود والذهب وعروض التجارة، أم زكاة الفطر، أم الزروع والماشية؟ وهل تسأل عن النصاب أم النسبة أو المقدار الواجب؟ حدّد النوع حتى نرجع إلى النص المناسب.",
+    "clarify-zakat": "اختر نوع الزكاة لعرض النصوص التي تجيب عن سؤالك:",
     refer:
       "هذا السؤال يتطلب معرفة تفاصيل حالتك من مختص مؤهل. لا يصدر رَفّ حكمًا شخصيًا نهائيًا. يمكنك البحث بصياغة عامة عن النصوص المنشورة ذات الصلة.",
     clarify:
@@ -25,7 +24,7 @@ export const policyMessages = {
   },
   en: {
     "clarify-zakat":
-      "Which type of zakat do you mean: money, gold or trade goods; zakat al-fitr; or crops and livestock? Are you asking about the nisab threshold or the rate/amount due? Please specify so we can retrieve the relevant source.",
+      "Choose the type of zakat to find source texts that answer your question:",
     refer:
       "Your circumstances need a qualified scholar who can examine the details. Raff does not issue a final personal ruling. You may ask a general question to find relevant published source texts.",
     clarify:
@@ -62,7 +61,7 @@ export function classifyPolicy(question, language = "ar") {
     /مقدار|كم|نسب[هت]|حساب|احسب|نصاب|\b(?:amount|much|rate|calculate|nisab)\b/iu.test(
       q,
     ) &&
-    !/فطر|نقود|مال|اموال|ذهب|فض[هت]|تجار[هت]|زروع|زرع|ثمار|ماشية|ماشيه|انعام|ابل|بقر|غنم|\b(?:fitr|money|wealth|cash|gold|silver|trade|crop|livestock)\b/iu.test(
+    !/ايجار|اجر[هت]|عقار|رواتب|راتب|ديون|قرض|فطر|نقود|مال|اموال|ذهب|فض[هت]|تجار[هت]|زروع|زرع|ثمار|ماشية|ماشيه|انعام|ابل|بقر|غنم|\b(?:fitr|money|wealth|cash|gold|silver|trade|crops?|livestock|rent|rental|income|salary|debt|loan)\b/iu.test(
       q,
     )
   )
@@ -147,6 +146,35 @@ export function classifyPolicy(question, language = "ar") {
   return /(?:ما تعريف|ما معني|ما هي|ما هو|what is|define)/u.test(q)
     ? "information"
     : "explain";
+}
+
+export function clarificationChoices(kind, question, language = "ar") {
+  if (kind !== "clarify-zakat") return [];
+  const types =
+    language === "en"
+      ? [
+          ["Money", "zakat on money"],
+          ["Zakat al-Fitr", "zakat al-fitr"],
+          ["Gold and silver", "zakat on gold and silver"],
+          ["Trade goods", "zakat on trade goods"],
+          ["Crops", "zakat on crops"],
+          ["Livestock", "zakat on livestock"],
+        ]
+      : [
+          ["زكاة النقود", "زكاة النقود"],
+          ["زكاة الفطر", "زكاة الفطر"],
+          ["الذهب والفضة", "زكاة الذهب والفضة"],
+          ["عروض التجارة", "زكاة عروض التجارة"],
+          ["الزروع والثمار", "زكاة الزروع والثمار"],
+          ["الماشية", "زكاة الماشية"],
+        ];
+  return types.map(([label, subject]) => ({
+    label,
+    question:
+      language === "en"
+        ? question.replace(/\bzaka[th](?:ah)?\b/iu, subject)
+        : question.replace(/(?:ال)?زكا[ةه]/u, subject),
+  }));
 }
 
 export function classifyLibraryPolicy(question, language) {

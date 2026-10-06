@@ -1,6 +1,7 @@
-import { normalize } from "./core.mjs?v=0.13.1";
-import { createLibrary } from "./library-ui.mjs?v=0.13.1";
-import { copy } from "./i18n.mjs?v=0.13.1";
+import { normalize } from "./core.mjs?v=0.14.2";
+import { createLibrary } from "./library-ui.mjs?v=0.14.2";
+import { copy } from "./i18n.mjs?v=0.14.2";
+import { clarificationChoices } from "./policy.mjs?v=0.14.2";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -97,6 +98,10 @@ const personalLibrary = createLibrary({
   scope: $("library-scope"),
   getLanguage: () => language,
   navigate: show,
+  selectQuestion: (question) => {
+    $("question").value = question;
+    ask();
+  },
   changed: () => {
     generation++;
     personalLibrary.cancelSearch();
@@ -255,6 +260,24 @@ function renderAnswer(data) {
     el("h2", lastQuestion),
     el("p", data.result.message, "notice"),
   );
+  const choices = clarificationChoices(
+    data.result.kind,
+    lastQuestion,
+    language,
+  );
+  if (choices.length) {
+    const controls = el("div", undefined, "choices clarification-choices");
+    for (const choice of choices) {
+      const button = el("button", choice.label);
+      button.type = "button";
+      button.onclick = () => {
+        $("question").value = choice.question;
+        ask();
+      };
+      controls.append(button);
+    }
+    a.append(controls);
+  }
   if (data.result.level)
     a.append(
       el(
@@ -263,25 +286,43 @@ function renderAnswer(data) {
       ),
     );
   for (const s of data.result.sources) {
+    if (!s.citations?.length && s.kind !== "error") continue;
     const group = el("section", undefined, "source-group");
     group.append(el("h2", s.title));
     if (s.message) group.append(el("p", s.message, "notice"));
     for (const c of s.citations || [])
       group.append(sourceCard(c, data.result.openFull));
-    for (const suggestion of s.suggestions || []) {
-      const b = el("button", suggestion);
-      b.onclick = () => {
-        $("question").value = suggestion;
-        $("question").focus();
-      };
-      group.append(b);
-    }
     if (s.kind === "error") {
       const b = el("button", t().retry);
       b.onclick = () => ask();
       group.append(b);
     }
     a.append(group);
+  }
+  const suggestions = data.result.sources.flatMap((s) =>
+    (s.suggestions || []).map((item) => ({
+      ...item,
+      source: s.id,
+      sourceTitle: s.title,
+    })),
+  );
+  if (suggestions.length) {
+    const related = el("section", undefined, "related suggestions-only");
+    related.append(
+      el(
+        "h2",
+        language === "ar"
+          ? "مقترحات لمسائل أخرى — ليست إجابة عن سؤالك"
+          : "Related cases — not answers to your question",
+      ),
+    );
+    for (const item of suggestions) {
+      const button = el("button", `${item.title} — ${item.sourceTitle}`);
+      button.type = "button";
+      button.onclick = () => open(item.source, item.id);
+      related.append(button);
+    }
+    a.append(related);
   }
   $("result").replaceChildren(a);
   $("submit").disabled = false;
@@ -335,7 +376,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.13.1", import.meta.url),
+    new URL("./search-worker.mjs?v=0.14.2", import.meta.url),
     {
       type: "module",
     },

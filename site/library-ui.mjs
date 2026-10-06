@@ -1,5 +1,9 @@
-import { libraryDB } from "./library-store.mjs?v=0.13.1";
-import { classifyLibraryPolicy, policyMessages } from "./policy.mjs?v=0.13.1";
+import { libraryDB } from "./library-store.mjs?v=0.14.2";
+import {
+  classifyLibraryPolicy,
+  policyMessages,
+  clarificationChoices,
+} from "./policy.mjs?v=0.14.2";
 
 export function createLibrary({
   panel,
@@ -7,6 +11,7 @@ export function createLibrary({
   changed,
   navigate,
   getLanguage,
+  selectQuestion,
 }) {
   let shelves = [],
     books = [],
@@ -36,7 +41,7 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.13.1", import.meta.url),
+      new URL("./library-worker.mjs?v=0.14.2", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {
@@ -566,6 +571,16 @@ export function createLibrary({
             policyMessages[getLanguage()].context,
         ),
       );
+      const controls = node("div", "", "choices clarification-choices");
+      for (const choice of clarificationChoices(
+        policy,
+        question,
+        getLanguage(),
+      ))
+        controls.append(
+          button(choice.label, () => selectQuestion(choice.question)),
+        );
+      result.append(controls);
       return result;
     }
     const ids = scopeIds();

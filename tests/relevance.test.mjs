@@ -172,3 +172,79 @@ test("deployment-prepared subjects reproduce runtime scoring inputs exactly", as
   assert.throws(() => restoreSubjects([], 2), /Incomplete/);
   assert.throws(() => restoreSubjects([[["valid"], [42]]], 1), /Invalid/);
 });
+
+test("narrow zakat cases are suggestions unless the user requested that case", async () => {
+  const { isRelatedCase } = await import("../site/relevance.mjs");
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة النقود؟", {
+      title: "زكاة أجرة السكن والمحلات",
+    }),
+    true,
+  );
+  assert.equal(
+    isRelatedCase("What is zakat on money?", {
+      title: "Zakat on rental income",
+    }),
+    true,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة أجرة السكن؟", {
+      title: "زكاة أجرة السكن والمحلات",
+    }),
+    false,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة الفطر؟", {
+      title: "مقدار زكاة الفطر إذا أخرجت لحما",
+    }),
+    true,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة الفطر؟", { title: "حكم زكاة الفطر ومقدارها" }),
+    false,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة النقود؟", { title: "نصاب النقدين" }),
+    false,
+  );
+});
+
+test("a named zakat subtype cannot be replaced with a money-saving answer", async () => {
+  const { scopeConflict } = await import("../site/paged-engine.mjs");
+  assert.equal(
+    scopeConflict("ما مقدار زكاة الفطر؟", {
+      title: "نص من الكتاب — عنوان غير متاح",
+      question: "هل تجب زكاة المال المرصود للزواج؟",
+    }),
+    true,
+  );
+  assert.equal(
+    scopeConflict("ما مقدار زكاة الفطر؟", {
+      title: "حكم زكاة الفطر ومقدارها",
+      question: "هل تجب على المحتاج؟",
+    }),
+    false,
+  );
+});
+
+test("rejecting one narrow case does not admit another narrower replacement", async () => {
+  const { isRelatedCase } = await import("../site/relevance.mjs");
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة النقود؟", { title: "زكاة الدور والسيارات" }),
+    true,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة أجرة السكن؟", {
+      title: "نصاب الذهب عيار 21",
+      question: "ما مقدار نصابه؟",
+    }),
+    true,
+  );
+  assert.equal(
+    isRelatedCase("ما مقدار زكاة النقود؟", {
+      title: "نص من الكتاب — عنوان غير متاح",
+      question: "هل تجب الزكاة في مال الزواج؟",
+    }),
+    true,
+  );
+});

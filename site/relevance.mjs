@@ -1,4 +1,4 @@
-import { terms, normalize } from "./core.mjs?v=0.13.1";
+import { terms, normalize } from "./core.mjs?v=0.14.2";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
@@ -119,6 +119,11 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
     unit.text?.match(/\sس\s[\s\S]+?\sج\s+([\s\S]+)/u)?.[1] ||
     unit.text;
   if (!question || !answer) return false;
+  if (
+    /زكا[ةهت].*فطر|\bzaka[th].*\bfitr\b/iu.test(question) &&
+    !/فطر|\bfitr\b/iu.test((unit.question || "") + " " + answer)
+  )
+    return false;
   const temporalObject = normalize(question).match(
     /قبل\s+([\p{L}]+).+بعد/u,
   )?.[1];
@@ -217,6 +222,30 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
         requested.length >=
         0.75)
   );
+}
+
+// A source may mention the requested amount while answering a different,
+// narrower case. Keep that case discoverable, but never present it as the answer.
+export function isRelatedCase(question, unit) {
+  const q = normalize(question),
+    title = normalize(
+      /عنوان غير متاح|untitled/iu.test(unit.title || "")
+        ? unit.question || ""
+        : unit.title || "",
+    );
+  const facets = [
+    /اجر[ةه]|ايجار|تاجير|السكن|المحلات|\b(?:rent|rental|tenancy)\b/iu,
+    /راتب|رواتب|\b(?:salary|salaries|wages)\b/iu,
+    /سيار|عقار|الدور|الاراضي|\b(?:cars?|property|properties|land)\b/iu,
+    /زواج|تزوج|للبناء|\b(?:marriage|wedding|construction)\b/iu,
+    /(?:^|\s)(?:ال)?(?:دين|ديون|قرض|قروض)(?=\s|[،؟:]|$)|\b(?:debt|debts|loan|loans)\b/iu,
+    /لحم|لحما|\bmeat\b/iu,
+    /الماضي|سنوات سابق|سنين|\b(?:past years|previous years|missed)\b/iu,
+  ];
+  if (!/زكا[ةهت]|\bzaka[th]/iu.test(q)) return false;
+  const topic = title + " " + normalize(unit.question || "");
+  if (facets.some((facet) => facet.test(q) && !facet.test(topic))) return true;
+  return facets.some((facet) => facet.test(title) && !facet.test(q));
 }
 
 export function prepareSubjects(index, vocabulary) {

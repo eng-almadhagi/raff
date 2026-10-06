@@ -102,3 +102,21 @@ test("zakat subtype conflicts do not leak into a general money query", async () 
     false,
   );
 });
+
+test("zakat clarification offers distinct searchable choices and preserves nisab intent", async () => {
+  const { clarificationChoices, classifyPolicy } = await import(
+    "../site/policy.mjs"
+  );
+  for (const [question, lang] of [
+    ["ما هو مقدار الزكاة", "ar"],
+    ["ما نصاب الزكاة؟", "ar"],
+    ["What is the amount of zakat?", "en"],
+  ]) {
+    const choices = clarificationChoices("clarify-zakat", question, lang);
+    assert.equal(choices.length, 6);
+    for (const choice of choices)
+      assert.notEqual(classifyPolicy(choice.question, lang), "clarify-zakat");
+    if (question.includes("نصاب"))
+      assert.ok(choices.every((c) => c.question.includes("نصاب")));
+  }
+});

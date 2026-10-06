@@ -192,3 +192,43 @@ test("a direct title and supported answer avoid model and vectors", async () => 
   assert.equal(result.sources[0].citations[0].text, u.text);
   assert.ok(calls.every((c) => !c.endsWith(".i8")));
 });
+
+test("a qualified source case is a suggestion, never a forced per-source answer or follow-up", async () => {
+  const engine = new PagedEngine(metas, vocabulary, () => Array(384).fill(0));
+  engine.load = async () => ({
+    index: [],
+    subjects: { frequencies: new Map(), documents: [] },
+  });
+  engine.rank = async () => ({
+    missing: [],
+    rows: [
+      {
+        id: "rental",
+        score: 1,
+        focus: 0.95,
+        dense: 0.95,
+        coverage: 1,
+        subject: { anchor: true, titleCoverage: 1, questionCoverage: 1 },
+      },
+    ],
+  });
+  engine.citation = async () => ({
+    ...unit("ar"),
+    id: "rental",
+    title: "زكاة أجرة السكن والمحلات",
+    answer: "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها.",
+    text: "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها.",
+  });
+  const result = await engine.ask("ما مقدار زكاة النقود؟", "ar", [
+    "islamqa-ar",
+  ]);
+  assert.deepEqual(result.sources[0].citations, []);
+  assert.deepEqual(result.sources[0].suggestions, [
+    { id: "rental", title: "زكاة أجرة السكن والمحلات" },
+  ]);
+  assert.equal(engine.last.has("ar"), false);
+  const targeted = await engine.ask("ما مقدار زكاة أجرة السكن؟", "ar", [
+    "islamqa-ar",
+  ]);
+  assert.equal(targeted.sources[0].citations[0].id, "rental");
+});

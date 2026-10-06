@@ -3,19 +3,20 @@ import {
   evidence,
   normalize,
   focusedPreview,
-} from "./core.mjs?v=0.13.1";
+} from "./core.mjs?v=0.14.2";
 import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.13.1";
+} from "./policy.mjs?v=0.14.2";
 import {
   prepareSubjects,
   restoreSubjects,
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.13.1";
+  isRelatedCase,
+} from "./relevance.mjs?v=0.14.2";
 
 export const bucket = (text) => {
   let h = 0;
@@ -84,6 +85,8 @@ export function scopeConflict(question, entry) {
   if (/(?:زكا[ةهت]|zaka[th])/iu.test(q)) {
     const fitr = /فطر|\bfitr\b/iu;
     if (fitr.test(title) && !fitr.test(q)) return true;
+    if (fitr.test(q) && !fitr.test(title + " " + (entry.question || "")))
+      return true;
     if (
       /الماضي|سنوات سابق|اعوام سابق|سنين ماضي|past years|previous years/iu.test(
         title,
@@ -507,6 +510,7 @@ export class PagedEngine {
                 ({ u, match }) =>
                   u.retrievable &&
                   !scopeConflict(query, u) &&
+                  !isRelatedCase(query, u) &&
                   match.titleCoverage >= 0.99 &&
                   match.precision >= 0.75,
               )
@@ -615,10 +619,16 @@ export class PagedEngine {
         const selected = eligible
             .filter((r) => enough(r) && r.score >= best.score - 0.2)
             .slice(0, 20),
-          citations = [];
+          citations = [],
+          suggestions = [];
         for (const r of selected) {
           const c = await this.citation(meta, r.id, false, question);
           if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
+          if (isRelatedCase(query, c)) {
+            if (suggestions.length < 3)
+              suggestions.push({ id: c.id, title: c.title });
+            continue;
+          }
           if (citations.length && r.score < best.score - 0.04) continue;
           if (!citations.some((p) => p.text === c.text))
             citations.push(await this.citation(meta, r.id, true, question));
@@ -630,6 +640,7 @@ export class PagedEngine {
           kind: citations.length ? "citation" : "insufficient",
           message: citations.length ? undefined : messages.insufficient,
           citations,
+          suggestions,
         });
       } catch (error) {
         sources.push({
@@ -658,10 +669,13 @@ export class PagedEngine {
     return {
       kind,
       level: { information: "A", explain: "B", qualified: "C" }[kind],
-      message:
-        language === "ar"
-          ? "نتائج مستقلة من كل مصدر، دون دمج الأقوال أو ترجيح بينها."
-          : "Results from each source are separate; opinions are not merged or independently preferred.",
+      message: !cited.length
+        ? language === "ar"
+          ? "لم نعثر على نص كافٍ يجيب مباشرة عن هذا السؤال في المصادر المحددة."
+          : "No sufficiently direct answer was found in the selected sources."
+        : language === "ar"
+          ? "النصوص المناسبة لسؤالك فقط، مع فصل المصادر دون دمج الأقوال أو ترجيح بينها."
+          : "Only relevant source answers are shown, separately and without independently preferring an opinion.",
       sources,
     };
   }
