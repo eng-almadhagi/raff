@@ -1,0 +1,14 @@
+[
+  {
+    "package": "pdfjs-dist",
+    "version": "6.4.299",
+    "url": "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.4.299.tgz",
+    "sha256": "86269b40170eb41740ea05ad2102d71d33de4f122b34eb2f478be0ea7779c415"
+  },
+  {
+    "package": "mammoth",
+    "version": "1.13.0",
+    "url": "https://registry.npmjs.org/mammoth/-/mammoth-1.13.0.tgz",
+    "sha256": "fe778792e43b06dbbff93d20e22951fe1bc55a05eb04ec823961e8639c62260b"
+  }
+]

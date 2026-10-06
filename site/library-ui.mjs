@@ -15,24 +15,45 @@ export function createLibrary({
     chosen = new Set(),
     available = false,
     importing = false;
-  const worker = new Worker(new URL("./library-worker.mjs", import.meta.url), {
-    type: "module",
-  });
+  let worker;
   const pending = new Map();
-  worker.onmessage = ({ data }) => {
-    const job = pending.get(data.id);
-    if (!job) return;
-    pending.delete(data.id);
-    data.error ? job.reject(Error(data.error)) : job.resolve(data.result);
-  };
-  worker.onerror = () => {
-    for (const job of pending.values()) job.reject(Error("worker"));
-    pending.clear();
-  };
+  function resetWorker() {
+    worker?.terminate();
+    worker = new Worker(
+      new URL("./library-worker.mjs?v=0.11.0", import.meta.url),
+      { type: "module" },
+    );
+    worker.onmessage = ({ data }) => {
+      const job = pending.get(data.id);
+      if (!job) return;
+      pending.delete(data.id);
+      clearTimeout(job.timer);
+      data.error ? job.reject(Error(data.error)) : job.resolve(data.result);
+    };
+    worker.onerror = () => {
+      for (const job of pending.values()) {
+        clearTimeout(job.timer);
+        job.reject(Error("worker"));
+      }
+      pending.clear();
+      worker.terminate();
+      worker = undefined;
+    };
+  }
   const run = (data) =>
     new Promise((resolve, reject) => {
       const id = crypto.randomUUID();
-      pending.set(id, { resolve, reject });
+      if (!worker) resetWorker();
+      const timer = setTimeout(() => {
+        for (const job of pending.values()) {
+          clearTimeout(job.timer);
+          job.reject(Error("document-timeout"));
+        }
+        pending.clear();
+        worker.terminate();
+        worker = undefined;
+      }, 60000);
+      pending.set(id, { resolve, reject, timer });
       worker.postMessage({ ...data, id });
     });
   const tr = (ar, en) => (getLanguage() === "ar" ? ar : en);
@@ -61,6 +82,22 @@ export function createLibrary({
       "تعذر الحفظ أو الفهرسة. تحقق من صيغة الملف وحجمه وإتاحة تخزين المتصفح ثم أعد المحاولة.",
       "Could not save or index. Check file format, size and browser storage, then retry.",
     );
+  const extractionNote = (book) => {
+    if (!book.extraction) return "";
+    const skipped = book.extraction.pagesWithoutText;
+    return (
+      tr(
+        "نص مستخرج آليًا؛ راجع مطابقته وترتيبه في الأصل. الصور لا تُفهرس.",
+        "Automatically extracted text; check wording and reading order against the original. Images are not indexed.",
+      ) +
+      (skipped.length
+        ? tr(
+            ` صفحات لم يُستخرج منها نص: ${skipped.join("، ")}.`,
+            ` Pages without extractable text: ${skipped.join(", ")}.`,
+          )
+        : "")
+    );
+  };
   async function refresh() {
     [shelves, books] = await Promise.all([
       libraryDB("getAll", "shelves"),
@@ -249,19 +286,19 @@ export function createLibrary({
     const file = input(
       form,
       tr(
-        "ملف UTF-8: TXT أو MD أو JSON (حتى 5 MB)",
-        "UTF-8 file: TXT, MD or JSON (up to 5 MB)",
+        "ملف الكتاب: PDF أو Word DOCX نصّي (حتى 20 MB)، أو TXT / MD / JSON (حتى 5 MB)",
+        "Book file: text PDF or Word DOCX (up to 20 MB), or TXT / MD / JSON (up to 5 MB)",
       ),
       "file",
     );
-    file.accept = ".txt,.md,.json";
+    file.accept = ".txt,.md,.json,.pdf,.docx,.doc";
     file.required = true;
     form.append(
       node(
         "p",
         tr(
-          'TXT وMD: المرجع رقم الفقرة، وليس رقم صفحة. JSON: {"sections":[{"text":"النص الكامل","reference":"ص 12","heading":"العنوان"}]}. تُعرض الفقرة كاملة؛ قد تمتد شروط المسألة إلى فقرات أخرى، لذا راجع النص الكامل. لا يدعم هذا المسار PDF أو OCR بعد.',
-          'TXT and MD use paragraph locations, not page numbers. JSON: {"sections":[{"text":"full text","reference":"p. 12","heading":"title"}]}. Paragraphs remain whole; conditions may continue elsewhere, so review the full source. PDF and OCR are not supported yet.',
+          "يُستخرج النص داخل جهازك دون رفع الملف. PDF: المرجع ترتيب الصفحة في الملف، وقد يختلف عن الرقم المطبوع. Word DOCX: المرجع رقم الفقرة؛ الصور لا تتحول إلى نص. ملفات DOC القديمة يجب حفظها بصيغة DOCX. راجع ترتيب النص المستخرج، خاصة الأعمدة والحواشي؛ لا يوجد OCR. TXT وMD يستخدمان رقم الفقرة، وJSON يحفظ المرجع المرفق بالنص.",
+          "Text is extracted on your device without uploading the file. PDF references use file page order, which may differ from printed numbers. Word DOCX uses paragraph numbers; images are not converted to text. Save old DOC files as DOCX first. Review extraction order, especially columns and footnotes; there is no OCR. TXT and MD use paragraph locations; JSON retains supplied references.",
         ),
       ),
     );
@@ -275,7 +312,15 @@ export function createLibrary({
       e.preventDefault();
       if (importing) return;
       const selected = file.files[0];
-      if (!selected || selected.size > 5_000_000) {
+      if (selected && /\.doc$/i.test(selected.name)) {
+        message.textContent = tr(
+          "ملف Word قديم بصيغة DOC. افتحه في Word واختر «حفظ باسم» ثم DOCX، وأضفه مجددًا.",
+          "This is an old DOC file. Open it in Word, choose Save As DOCX, and import it again.",
+        );
+        return;
+      }
+      const binary = selected && /\.(pdf|docx)$/i.test(selected.name);
+      if (!selected || selected.size > (binary ? 20_000_000 : 5_000_000)) {
         message.textContent = errorText();
         return;
       }
@@ -289,7 +334,9 @@ export function createLibrary({
         const book = await run({
           type: "import",
           payload: {
-            content: await selected.text(),
+            ...(binary
+              ? { buffer: await selected.arrayBuffer() }
+              : { content: await selected.text() }),
             filename: selected.name,
             title: title.value,
             author: author.value,
@@ -305,8 +352,30 @@ export function createLibrary({
           `تمت فهرسة ${book.units.length} موضعًا. الكتاب جاهز للبحث.`,
           `${book.units.length} passages indexed. The book is ready to search.`,
         );
-      } catch {
-        message.textContent = errorText();
+      } catch (error) {
+        const messages = {
+          "document-no-text": tr(
+            "لم نجد نصًا كافيًا قابلًا للاستخراج؛ قد يكون الملف صورًا أو مسحًا ضوئيًا. لم تتم إضافته. يلزم ملف نصّي أو OCR خارج الموقع.",
+            "No sufficient extractable text was found. This may be a scan or image-only file. It was not added. Use a text document or external OCR.",
+          ),
+          "document-password": tr(
+            "الملف محمي بكلمة مرور. أضف نسخة نصية غير محمية تملك صلاحية استخدامها.",
+            "The PDF is password protected. Import an unprotected text copy you are authorized to use.",
+          ),
+          "document-limit": tr(
+            "تجاوز الملف حدود المعالجة: 20 MB للملف، و2000 صفحة PDF، و5 ملايين محرف للنص المستخرج. قسّمه إلى أجزاء أصغر.",
+            "The document exceeds processing limits: 20 MB per file, 2,000 PDF pages, and 5 million extracted characters. Split it into smaller parts.",
+          ),
+          "document-timeout": tr(
+            "استغرقت المعالجة وقتًا طويلًا. لم يُحفظ الملف؛ جرّب جزءًا أصغر أو أعد المحاولة.",
+            "Processing timed out. The file was not saved; try a smaller part or retry.",
+          ),
+          "document-invalid": tr(
+            "تعذر قراءة الملف. قد يكون تالفًا أو مشفرًا أو لا يطابق صيغته. أعد حفظه من برنامجه الأصلي ثم حاول مجددًا.",
+            "The file could not be read. It may be damaged, encrypted or incorrectly named. Save it again using its original application, then retry.",
+          ),
+        };
+        message.textContent = messages[error.message] || errorText();
       } finally {
         importing = false;
         const b = panel.querySelector(
@@ -345,6 +414,8 @@ export function createLibrary({
       card.append(rename);
       for (const book of own) {
         const row = node("article", "", "library-book");
+        if (book.extraction)
+          row.append(node("p", extractionNote(book), "notice"));
         row.append(
           node("h4", book.title),
           node(
@@ -470,6 +541,9 @@ export function createLibrary({
       );
     for (const hit of hits) {
       const card = node("article", "", "source");
+      const book = books.find((b) => b.id === hit.bookId);
+      if (book.extraction)
+        card.append(node("p", extractionNote(book), "notice"));
       card.append(
         node("h3", hit.title),
         node("p", `${hit.author} · ${hit.reference} · ${hit.heading}`),
