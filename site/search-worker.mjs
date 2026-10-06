@@ -1,10 +1,12 @@
-import { PagedEngine, checked } from "./paged-engine.mjs?v=0.9.2";
+import { PagedEngine, checked } from "./paged-engine.mjs?v=0.9.3";
 let engine,
   extractor,
+  modelSetupMilliseconds = 0,
   language = "ar";
 const progress = (message) => postMessage({ type: "progress", message });
 async function embed(question) {
   if (!extractor) {
+    const setupStarted = performance.now();
     progress(
       language === "ar"
         ? "جارٍ تحميل نموذج البحث بالمعنى؛ التحميل الأول أكبر من الزيارات اللاحقة…"
@@ -23,6 +25,7 @@ async function embed(question) {
       dtype: "q8",
       device: "wasm",
     });
+    modelSetupMilliseconds = Math.round(performance.now() - setupStarted);
   }
   const output = await extractor("query: " + question, {
     pooling: "mean",
@@ -35,23 +38,31 @@ async function embed(question) {
 onmessage = async ({ data }) => {
   try {
     if (data.type === "init") {
+      const sameLanguage = language === data.language;
       language = data.language;
-      engine = new PagedEngine(
-        data.catalog,
-        await checked("./vocabulary.json"),
-        embed,
-        progress,
-      );
+      if (engine && sameLanguage) {
+        engine.catalog = data.catalog;
+        engine.last.clear();
+      } else
+        engine = new PagedEngine(
+          data.catalog,
+          await checked("./vocabulary.json"),
+          embed,
+          progress,
+        );
       postMessage({ type: "ready" });
       return;
     }
     if (data.type === "ask") {
       const started = performance.now();
+      modelSetupMilliseconds = 0;
       const result = await engine.ask(data.question, language, data.sourceIds);
       postMessage({
         type: "answer",
         result,
         milliseconds: Math.round(performance.now() - started),
+        preparationMilliseconds: engine.lastPreparationMilliseconds || 0,
+        modelSetupMilliseconds,
       });
       return;
     }

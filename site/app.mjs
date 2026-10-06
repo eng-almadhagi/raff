@@ -1,5 +1,5 @@
 import { normalize } from "./core.mjs";
-import { copy } from "./i18n.mjs";
+import { copy } from "./i18n.mjs?v=0.9.3";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -35,6 +35,20 @@ const selected = () =>
 function status(s) {
   $("status").textContent = s;
 }
+function setBusy(active) {
+  busy = active;
+  $("search-indicator").hidden = !active;
+  $("ask-form").setAttribute("aria-busy", String(active));
+  $("status-detail").textContent = "";
+  $("retry-search").hidden = true;
+  if (active) $("search-metrics").hidden = true;
+}
+function failed() {
+  setBusy(false);
+  status(t().error);
+  $("retry-search").hidden = false;
+  $("submit").disabled = !ready;
+}
 let page = ["about", "method"].includes(location.hash.slice(1))
   ? location.hash.slice(1)
   : "ask";
@@ -68,9 +82,9 @@ window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 show(page);
 function open(source, id) {
   if (!ready || busy) return;
-  busy = true;
+  setBusy(true);
   $("submit").disabled = true;
-  status(t().loading);
+  status(t().searching);
   worker.postMessage({ type: "open", source, id });
 }
 function sourceCard(u, opened = false) {
@@ -200,7 +214,7 @@ function sourceCard(u, opened = false) {
   return box;
 }
 function renderAnswer(data) {
-  busy = false;
+  setBusy(false);
   show("result");
   const a = el("section", undefined, "answer");
   a.append(
@@ -209,7 +223,12 @@ function renderAnswer(data) {
     el("p", data.result.message, "notice"),
   );
   if (data.result.level)
-    a.append(el("small", `${t().level}: ${data.result.level}`));
+    a.append(
+      el(
+        "small",
+        `${t().level}: ${language === "ar" ? { A: "أ", B: "ب", C: "ج", D: "د" }[data.result.level] || data.result.level : data.result.level}`,
+      ),
+    );
   for (const s of data.result.sources) {
     const group = el("section", undefined, "source-group");
     group.append(el("h2", s.title));
@@ -238,26 +257,52 @@ function renderAnswer(data) {
       ? t().error
       : t().complete,
   );
+  if (data.result.sources.some((s) => s.kind === "error"))
+    $("retry-search").hidden = false;
+  if (Number.isFinite(data.milliseconds)) {
+    const total = (data.milliseconds / 1000).toFixed(2);
+    const setup = ((data.preparationMilliseconds || 0) / 1000).toFixed(2);
+    $("search-metrics").textContent =
+      language === "ar"
+        ? `الوقت الكلي: ${total} ث · تجهيز البحث: ${setup} ث${data.modelSetupMilliseconds ? " · شمل تجهيز النموذج أول مرة" : ""}`
+        : `Total: ${total} s · Search preparation: ${setup} s${data.modelSetupMilliseconds ? " · Includes first model setup" : ""}`;
+    $("search-metrics").dataset.totalMs = data.milliseconds;
+    $("search-metrics").dataset.preparationMs =
+      data.preparationMilliseconds || 0;
+    $("search-metrics").dataset.modelSetupMs = data.modelSetupMilliseconds || 0;
+    $("search-metrics").hidden = false;
+  }
 }
 function initialize() {
   const currentGeneration = ++generation;
+  const interrupted = busy;
   status(t().loading);
   ready = false;
-  busy = false;
+  setBusy(false);
+  $("search-metrics").hidden = true;
   units = [];
   $("submit").disabled = true;
-  worker?.terminate();
+  if (interrupted) {
+    worker?.terminate();
+    worker = undefined;
+  }
 
   if (!sources().length) {
     status(t().disabled);
     return;
   }
-  worker = new Worker(new URL("./search-worker.mjs?v=0.9.2", import.meta.url), {
-    type: "module",
-  });
+  worker ||= new Worker(
+    new URL("./search-worker.mjs?v=0.9.3", import.meta.url),
+    {
+      type: "module",
+    },
+  );
   worker.onmessage = ({ data }) => {
     if (currentGeneration !== generation) return;
-    if (data.type === "progress") status(data.message);
+    if (data.type === "progress") {
+      if (busy) $("status-detail").textContent = data.message;
+      else status(data.message);
+    }
     if (data.type === "ready") {
       ready = true;
       $("submit").disabled = false;
@@ -270,23 +315,22 @@ function initialize() {
       if (currentPage !== "ask") show(currentPage);
     }
     if (data.type === "opened") {
-      busy = false;
+      setBusy(false);
       $("submit").disabled = false;
       show("result");
       $("result").replaceChildren(sourceCard(data.citation, true));
       status(t().complete);
     }
     if (data.type === "error") {
-      busy = false;
-      status(t().error);
-      $("submit").disabled = !ready;
+      failed();
     }
   };
   worker.onerror = () => {
     if (currentGeneration !== generation) return;
-    busy = false;
-    status(t().error);
-    $("submit").disabled = !ready;
+    ready = false;
+    worker?.terminate();
+    worker = undefined;
+    failed();
   };
   worker.postMessage({ type: "init", catalog: sources(), language });
 }
@@ -349,6 +393,13 @@ function translate() {
     el(
       "p",
       language === "ar"
+        ? "هذه النسخة متاحة لأغراض المشاركة في المسابقة. يلتزم فريق رَفّ بإيقاف الإتاحة العامة للمحتوى بعد انتهائها، وعدم إعادة إتاحته إلا بعد الحصول على أذونات النشر اللازمة من أصحاب الحقوق. تُنسب النصوص إلى مصادرها الأصلية مع روابطها، ولا يُعد عرضها ادعاءً بامتلاك حقوقها."
+        : "This version is available for participation in the competition. The Raff team commits to ending public access to the content after the competition ends and not making it available again until the necessary publication permissions have been obtained from the rights holders. Texts are attributed to their original sources with links; displaying them does not constitute a claim of ownership of their rights.",
+      "notice",
+    ),
+    el(
+      "p",
+      language === "ar"
         ? "تُسترجع النصوص من ملفات النسخة المحفوظة، دون جلبها من مواقع المصادر وقت السؤال. البحث يجمع المطابقة اللفظية والبحث بالمعنى. يظهر جواب المصدر كاملًا بنصه وشروطه؛ خلاصة الموقع الأصلية منفصلة وليست تلخيصًا من رَفّ."
         : "Texts are retrieved from this release’s stored files, without querying source websites at answer time. Search combines lexical and semantic retrieval. Complete source answers preserve the original wording and conditions; original website summaries are separate, not generated by Raff.",
     ),
@@ -357,6 +408,64 @@ function translate() {
       language === "ar"
         ? "نُشرت النسخة بقرار مسؤول المنصة؛ لم يُثبت ترخيص إعادة نشر شامل. الإتاحة المجانية والحزمة الرسمية لا تثبتان هذا الترخيص. الإسلام سؤال وجواب غير معتمد صراحة في ملفات المسابقة المتاحة؛ يمكن تعطيله بوضع المسابقة."
         : "This preview is published by the platform operator’s decision; a blanket redistribution license has not been established. Free access and official offline packages do not establish such a license. IslamQA is not explicitly approved in the available competition documents and can be disabled in competition mode.",
+    ),
+  );
+  method.append(
+    el(
+      "h3",
+      language === "ar"
+        ? "مستويات المحتوى وضبط الاستجابة"
+        : "Content levels and response rules",
+    ),
+  );
+  const levels =
+    language === "ar"
+      ? [
+          [
+            "أ — معلومات أصلية مستقرة",
+            "يعرض معلومات وتعريفات مستقرة بإجابة مباشرة موثقة عند كفاية المصدر. لا يُعد النقل تحقيقًا مستقلًا لصحة الحديث.",
+          ],
+          [
+            "ب — شرح وتعريف واستدلال",
+            "يعرض المادة ذات الصلة ومرجعها لتوضيح المفهوم أو المسألة، مع حفظ الشروط وتجنب القطع فيما يحتمل الخلاف. النسخة الحالية تنقل جواب المصدر كاملًا ولا تولّد شرحًا فقهيًا مستقلًا.",
+          ],
+          [
+            "ج — مسائل خلافية أو عالية الحساسية",
+            "يعرض الأقوال المتاحة منفصلة ومنسوبة إلى مصادرها، دون اختلاق إجماع أو ترجيح مستقل. يبيّن حدود المادة أو يحيل إلى مختص إذا احتاج السؤال تحريرًا علميًا خاصًا.",
+          ],
+          [
+            "د — فتوى أو حالة شخصية",
+            "لا يحكم على واقعة فردية أو صحة عقد أو عبادة لشخص بعينه. يحيل إلى جهة مؤهلة، ويمكن للمستخدم إعادة السؤال بصيغة عامة للبحث في النصوص المنشورة.",
+          ],
+        ]
+      : [
+          [
+            "A — Established factual information",
+            "Provides a direct, sourced answer about established information or definitions when the source is sufficient. Quoting a hadith does not independently authenticate it.",
+          ],
+          [
+            "B — Explanation, definition and source-based reasoning",
+            "Presents relevant source material and references to clarify a concept or issue, preserving conditions and avoiding certainty where disagreement is possible. This version quotes complete source answers and does not generate independent jurisprudential explanations.",
+          ],
+          [
+            "C — Disputed or highly sensitive issues",
+            "Presents available opinions separately with attribution, without inventing consensus or independently preferring an opinion. Explains the limits of the material or refers to a specialist when detailed scholarly analysis is needed.",
+          ],
+          [
+            "D — Fatwa or personal circumstances",
+            "Does not rule on an individual case or the validity of a particular person's contract or worship. Refers to a qualified authority; the user can rephrase the question generally to search published texts.",
+          ],
+        ];
+  const levelList = el("dl", undefined, "method-levels");
+  for (const [name, description] of levels)
+    levelList.append(el("dt", name), el("dd", description));
+  method.append(
+    levelList,
+    el(
+      "p",
+      language === "ar"
+        ? "هذه مستويات للاستجابة وليست درجات ثقة أو اعتماد شرعي. يطلب رَفّ التوضيح عند غموض السؤال، ويصرّح بنقص الدليل بدل إكمال النص من عنده. التصنيف آلي وقد يخطئ."
+        : "These are response categories, not confidence scores or scholarly approval. Raff asks for clarification when a question is ambiguous and states when evidence is insufficient instead of inventing missing text. Automated classification can be wrong.",
     ),
   );
   for (const m of sources())
@@ -385,7 +494,8 @@ function ask() {
   if (!ready || busy) return;
   lastQuestion = $("question").value.trim();
   if (lastQuestion.length < 2) return;
-  busy = true;
+  setBusy(true);
+  $("result").replaceChildren();
   $("submit").disabled = true;
   status(t().searching);
   worker.postMessage({
@@ -397,6 +507,11 @@ function ask() {
 $("ask-form").onsubmit = (e) => {
   e.preventDefault();
   ask();
+};
+$("retry-search").onclick = () => {
+  if (ready) ask();
+  else if (catalog.length) initialize();
+  else location.reload();
 };
 $("home").onclick = () => show("home");
 $("about").onclick = () => show("about");
@@ -438,6 +553,8 @@ $("theme").onclick = () => {
 };
 $("reset").onclick = () => {
   $("question").value = "";
+  $("result").replaceChildren();
+  $("search-metrics").hidden = true;
   initialize();
   show("home");
 };
@@ -452,5 +569,5 @@ try {
   initialize();
   show(page);
 } catch {
-  status(t().error);
+  failed();
 }

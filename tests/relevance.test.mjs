@@ -124,6 +124,20 @@ test("a negative exception does not explain a requested before/after comparison"
 });
 
 test("temporal evidence must refer to the requested event", () => {
-  assert.equal(answerSupportsQuestion({answer:"يبدأ العمل قبل السفر وينتهي بعد العودة."},"العمل قبل الاختبار وبعده",vocabulary),false);
-  assert.equal(answerSupportsQuestion({answer:"يبدأ العمل قبل الاختبار ثم يراجع بعد الاختبار."},"العمل قبل الاختبار وبعده",vocabulary),true);
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "يبدأ العمل قبل السفر وينتهي بعد العودة." },
+      "العمل قبل الاختبار وبعده",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "يبدأ العمل قبل الاختبار ثم يراجع بعد الاختبار." },
+      "العمل قبل الاختبار وبعده",
+      vocabulary,
+    ),
+    true,
+  );
 });

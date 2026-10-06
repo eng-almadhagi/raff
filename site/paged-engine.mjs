@@ -9,7 +9,7 @@ import {
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.9.2";
+} from "./relevance.mjs?v=0.9.3";
 
 export const bucket = (text) => {
   let h = 0;
@@ -279,19 +279,25 @@ export class PagedEngine {
       throw Error("Invalid query vector");
     const book = await this.load(meta, true),
       wanted = [...new Set(terms(question, this.vocabulary))];
-    for (const number of new Set(wanted.map(bucket))) {
-      if (!book.postings.has(number)) {
-        const name = `lex/${number}.json`;
-        book.postings.set(
-          number,
-          await checked(
-            book.base + name,
-            meta.hashes[name],
-            false,
-            meta.compression === "gzip",
-          ),
-        );
-      }
+    const buckets = [...new Set(wanted.map(bucket))];
+    // Four independent postings files at a time, without changing scoring.
+    for (let start = 0; start < buckets.length; start += 4) {
+      await Promise.all(
+        buckets.slice(start, start + 4).map(async (number) => {
+          if (!book.postings.has(number)) {
+            const name = `lex/${number}.json`;
+            book.postings.set(
+              number,
+              await checked(
+                book.base + name,
+                meta.hashes[name],
+                false,
+                meta.compression === "gzip",
+              ),
+            );
+          }
+        }),
+      );
     }
     const n = book.index.length,
       lex = new Float32Array(n),
@@ -373,6 +379,7 @@ export class PagedEngine {
     return { rows: unique, missing };
   }
   async ask(question, language, sourceIds) {
+    this.lastPreparationMilliseconds = 0;
     const kind = classifyPolicy(question, language),
       messages = policyMessages[language],
       reference = directReference(question);
@@ -418,8 +425,20 @@ export class PagedEngine {
         sources: [],
       };
     const query = searchQuery(question, language),
-      vector = reference === null ? await this.embed(query) : null,
       sources = [];
+    let vector = null;
+    if (reference === null) {
+      const preparationStarted = performance.now();
+      // Model setup and immutable source indexes are independent. Fetch both
+      // concurrently; retain source failures for the existing per-source UI.
+      [vector] = await Promise.all([
+        this.embed(query),
+        Promise.allSettled(metas.map((meta) => this.load(meta, true))),
+      ]);
+      this.lastPreparationMilliseconds = Math.round(
+        performance.now() - preparationStarted,
+      );
+    }
     for (const meta of metas) {
       this.progress(meta.title);
       try {

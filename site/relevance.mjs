@@ -93,12 +93,15 @@ const canonical = (t) =>
   (/^[a-z]+$/u.test(t) && t.length > 3
     ? t.replace(/(?:ing|s)$/u, "").replace(/e$/u, "")
     : t);
+const lexicalVocabularies = new WeakMap();
 export function intentTerms(text, vocabulary) {
   text = text.replace(/rak[’'‘-]?a[’']?h?s?/giu, "rakah");
-  const lexicalVocabulary = {
-    ...vocabulary,
-    concepts: { ...vocabulary.concepts, اجر: "فضل" },
-  };
+  if (!lexicalVocabularies.has(vocabulary))
+    lexicalVocabularies.set(vocabulary, {
+      ...vocabulary,
+      concepts: { ...vocabulary.concepts, اجر: "فضل" },
+    });
+  const lexicalVocabulary = lexicalVocabularies.get(vocabulary);
   const filtered = terms(text, lexicalVocabulary).filter(
     (t) => !framing.has(t),
   );

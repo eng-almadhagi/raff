@@ -13,7 +13,7 @@
     />
     <title>رَفّ | من السؤال إلى المصدر</title>
     <link rel="icon" href="./logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=0.9.3" />
   </head>
   <body>
     <header>
@@ -85,7 +85,23 @@
             ></button>
           </div>
         </form>
-        <p id="status" role="status" aria-live="polite"></p>
+        <div class="search-status" role="status" aria-live="polite">
+          <span
+            id="search-indicator"
+            class="search-spinner"
+            aria-hidden="true"
+            hidden
+          ></span>
+          <p id="status"></p>
+        </div>
+        <p id="status-detail" class="search-detail"></p>
+        <p id="search-metrics" class="search-detail" hidden></p>
+        <button
+          id="retry-search"
+          type="button"
+          data-i18n="retry"
+          hidden
+        ></button>
       </section>
       <div id="starter" class="topics"></div>
       <section id="result" aria-live="polite"></section>
@@ -103,6 +119,6 @@
       <span>Raff · رَفّ</span>
       <p data-i18n="footer"></p>
     </footer>
-    <script type="module" src="./app.mjs?v=0.9.2"></script>
+    <script type="module" src="./app.mjs?v=0.9.3"></script>
   </body>
 </html>

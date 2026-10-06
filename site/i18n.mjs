@@ -15,7 +15,7 @@ export const copy = {
     placeholder: "مثل: ما المذكور عن سجود السهو قبل السلام وبعده؟",
     search: "ابحث بالمعنى ←",
     ready: "جاهز للبحث · تُحمّل ملفات اللغة المختارة عند الحاجة",
-    searching: "جارٍ الاسترجاع من المصادر المحددة…",
+    searching: "جارٍ البحث في المصادر…",
     complete: "اكتمل البحث",
     disclosure:
       "رَفّ أداة بحث ومساعدة بالذكاء الاصطناعي، تعرض نصوص المصادر ومراجعها، ولا تصدر فتوى شخصية.",
@@ -78,7 +78,7 @@ export const copy = {
       "For example: What do the sources say about asthma inhalers while fasting?",
     search: "Search by meaning →",
     ready: "Ready · Only the selected language is loaded when needed",
-    searching: "Retrieving from the selected sources…",
+    searching: "Searching the sources…",
     complete: "Search complete",
     disclosure:
       "Raff is an AI-assisted search tool that presents source texts and references. It does not issue personal fatwas.",

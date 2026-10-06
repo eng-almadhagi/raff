@@ -588,3 +588,48 @@ html[dir="ltr"] .evidence blockquote {
   border-inline-start: 3px solid var(--brass);
   scrollbar-gutter: stable;
 }
+.search-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 2rem;
+}
+.search-status #status {
+  margin: 0;
+}
+.search-spinner {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  border: 3px solid var(--line, #d8d1bc);
+  border-top-color: var(--green, #287860);
+  border-radius: 50%;
+  animation: search-spin 0.8s linear infinite;
+}
+.search-spinner[hidden] {
+  display: none;
+}
+.search-detail {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 6px 0;
+}
+.method-levels dt {
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 18px;
+}
+.method-levels dd {
+  margin: 6px 0 16px;
+  line-height: 1.9;
+}
+@keyframes search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-spinner {
+    animation: none;
+  }
+}
