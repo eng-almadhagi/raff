@@ -277,11 +277,11 @@ export function subjectMatch(query, entry, document) {
     anchor:
       document.title.has(query.anchor) || document.question.has(query.anchor),
     score:
-      0.45 * titleCoverage +
+      0.3 * titleCoverage +
       0.2 * questionCoverage +
       0.1 * precision +
-      0.05 * lead +
-      0.05 * prefix +
+      0.15 * lead +
+      0.1 * prefix +
       0.15 * ordered -
       penalty -
       (/(?:^|\s)(?:عن|for|over)(?:\s|$)/iu.test(question) &&
