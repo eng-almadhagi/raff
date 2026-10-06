@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="رَف — اسأل بطريقتك، ووصل إلى المسألة ومصدرها.">
+  <title>رَف | لكل سؤال، مصدر</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#question">انتقل إلى السؤال</a>
+  <aside class="sidebar">
+    <a href="/" class="brand" aria-label="رَف، الصفحة الرئيسية">رَف<span class="brand-dot">.</span></a>
+    <p class="brand-sub">معرفةٌ تستند إلى مصدر</p>
+    <button class="new-chat" id="new-chat"><span aria-hidden="true">＋</span> محادثة جديدة</button>
+    <div class="section-label">مكتبتك المعرفية</div>
+    <label for="book">نطاق البحث</label><select id="book" aria-describedby="scope"><option value="fatawa-islamiyyah-1708">فتاوى إسلامية</option></select>
+    <p id="scope" class="muted">جارٍ التحقق من حالة المكتبة…</p>
+    <div class="side-note"><span class="small-icon" aria-hidden="true">⌑</span><strong>المصدر جزء من الجواب</strong><p>نصوص أصلية، ومسار علمي واضح، وروابط يمكنك الرجوع إليها.</p></div>
+    <div class="sidebar-bottom"><span class="status-dot"></span> العربية <span>نسخة تطوير · ٠.٥</span></div>
+  </aside>
+  <main>
+    <header><span>مساحة للفهم والبحث</span><a href="#about">عن رَف <span aria-hidden="true">↗</span></a></header>
+    <section class="workspace">
+      <div id="welcome" class="welcome">
+        <div class="eyebrow"><span class="spark" aria-hidden="true">✧</span> سؤالٌ بلغتك، ومعرفةٌ بمصدرها</div>
+        <h1>ابدأ بسؤالك.<br><span>واقترب من الفهم.</span></h1>
+        <p class="intro">ابحث في «فتاوى إسلامية» بجميع أبوابه، واقرأ النص مع مرجعه.<br>لا تحتاج إلى معرفة المصطلح الفقهي لتبدأ.</p>
+        <div class="examples" aria-label="أمثلة للأسئلة">
+          <button data-question="ما المقصود بسجود السهو؟"><span aria-hidden="true">↗</span><small>افهم المصطلح</small>ما المقصود بسجود السهو؟</button>
+          <button data-question="ما ورد في الكتاب عن التأمين؟"><span aria-hidden="true">↗</span><small>ابحث عن مسألة</small>ما ورد في الكتاب عن التأمين؟</button>
+          <button data-question="ما ورد في الكتاب عن زكاة الحلي؟"><span aria-hidden="true">↗</span><small>تتبّع المصدر</small>ما ورد في الكتاب عن زكاة الحلي؟</button>
+        </div>
+      </div>
+      <div id="coverage" class="coverage" role="status"><span aria-hidden="true">◷</span><div><strong>التحقق من التغطية</strong><p>جارٍ قراءة حالة كتاب فتاوى إسلامية…</p></div></div>
+      <section id="conversation" aria-label="المحادثة" aria-live="polite" aria-relevant="additions"></section>
+      <form id="ask-form">
+        <label class="sr-only" for="question">اكتب سؤالك</label>
+        <textarea id="question" maxlength="1000" rows="2" placeholder="ما المسألة التي تبحث عنها في فتاوى إسلامية؟" required></textarea>
+        <div class="composer-bottom"><span>اسأل بحرية، وراجع المصدر دائمًا</span><button id="submit" type="submit" aria-label="إرسال السؤال">إرسال <span aria-hidden="true">↑</span></button></div>
+      </form>
+      <p class="disclosure">رَف أداة للبحث ونقل الفتاوى الموثّقة مدعومة بالذكاء الاصطناعي عند تفعيل خدمة البحث بالمعنى؛ لا يطبّق الفتوى على حالتك ولا يصدر حكمًا مستقلًا.<br>المحادثة مؤقتة في هذه الصفحة، ولا تُحفظ على الخادم.</p>
+      <details class="levels"><summary>المستويات الأربعة للاستجابة</summary><p>أ: معلومات موثقة. ب: شرح من المادة المعتمدة. ج: مسائل خلافية أو حساسة مع التحفظ والإحالة. د: حالات شخصية يحيلها رَف إلى مختص دون حكم مستقل.</p></details>
+      <details id="about"><summary>كيف يعتني رَف بالمصدر؟</summary><p>يبحث داخل الكتاب الذي تختاره فقط. لا تُنشر إضافة للعامة حتى تجتاز اختبارات الاسترجاع وفحص البيانات وتُسجّل مراجعتها وحقوق استخدامها. قد يتيح التشغيل المحلي الخاص نصوصًا قيد المراجعة مع بيان حالتها. هذه النسخة تعرض نتائج بحث في النصوص الأصلية؛ التلخيص التوليدي غير مفعّل.</p><p>البحث بالكلمات متاح في الكتب المفهرسة. البحث بالمعنى يستخدم نموذجًا وفهرسًا واختبارات خاصة به؛ يمكن تشغيل النموذج على الجهاز أو الخادم دون الاتصال بمزود خارجي. لا تُعد درجات البحث نسبًا لصحة الأحكام.</p></details>
+    </section>
+    <footer><span>رَف — لكل سؤال، مصدر.</span><a href="https://app.turath.io/book/1708?page=1" target="_blank" rel="noopener noreferrer">فتاوى إسلامية · تراث 1708 ↗</a></footer>
+  </main>
+</body></html>

@@ -1,0 +1,11 @@
+services:
+  raf:
+    build:
+      context: .
+      args:
+        INSTALL_LOCAL_MODEL: "true"
+    environment:
+      RAF_EMBED_BACKEND: local
+      RAF_MODEL_DIR: /app/models
+    volumes:
+      - ./var/models/multilingual-e5-small:/app/models:ro

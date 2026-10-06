@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+private/
+var/
+__pycache__/
+*.py[cod]
+.venv/
+.coverage
+dist/
+_site/
+pages-content/
+node_modules/
+*.log

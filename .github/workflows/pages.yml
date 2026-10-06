@@ -1,0 +1,52 @@
+name: Deploy approved static Raf
+on:
+  workflow_dispatch:
+    inputs:
+      content_url:
+        description: 'Public HTTPS ZIP of approved content (catalog at ZIP root)'
+        required: true
+        type: string
+      content_sha256:
+        description: 'SHA-256 of the approved ZIP'
+        required: true
+        type: string
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/pages.test.mjs tests/policy-bilingual.test.mjs tests/paged-engine.test.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -v
+      - name: Fetch selected approved content
+        env:
+          CONTENT_URL: ${{ inputs.content_url }}
+          CONTENT_SHA256: ${{ inputs.content_sha256 }}
+        run: python -m tools.fetch_pages_content --url "$CONTENT_URL" --sha256 "$CONTENT_SHA256"
+      - run: python -m tools.assemble_pages
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy static files
+        id: deployment
+        uses: actions/deploy-pages@v4

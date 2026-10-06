@@ -1,0 +1,4 @@
+# Optional local CPU embedding runtime; keep core and CI dependency-free.
+onnxruntime==1.23.2
+tokenizers==0.22.1
+numpy==2.3.4

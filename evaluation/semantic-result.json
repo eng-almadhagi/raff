@@ -1,0 +1,1723 @@
+{
+  "dataset_sha256": "8d10c34da634a56b7fd5aacd378e2ebff639b19fab17566e676d4793c2d12616",
+  "model": "local-e5:93fd106cb96470f09eca3e256c056c7301ff9e70eb72a82f30112de8bc5bb6ef",
+  "documents": 12,
+  "index_seconds": 2.483,
+  "scope": "synthetic engineering examples, not fiqh",
+  "human_review": false,
+  "modes": {
+    "lexical": {
+      "cases": 48,
+      "top1": 19,
+      "top3": 33,
+      "median_ms": 0.52,
+      "p95_ms": 0.83,
+      "results": [
+        {
+          "question": "وين أحط أوراق الأعوام الماضية عشان ألقاها بعدين؟",
+          "expected": "archive",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 1.33
+        },
+        {
+          "question": "أريد ترتيب الملفات القديمة بطريقة يسهل الرجوع إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "mobile",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.73
+        },
+        {
+          "question": "كيف أنظم مستنداتي حسب السنة والموضوع؟",
+          "expected": "archive",
+          "actual": [
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "أحتاج مكانًا لحفظ الأوراق السابقة مع دليل للوصول إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "accessibility",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.72
+        },
+        {
+          "question": "لو خرب اللابتوب كيف أرجع شغلي؟",
+          "expected": "backup",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.69
+        },
+        {
+          "question": "أبي أحمي بياناتي من الضياع بنسخة ثانية",
+          "expected": "backup",
+          "actual": [
+            "loan",
+            "backup",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "كيف أحتفظ بصورة إضافية من ملفاتي خارج جهازي؟",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "loan",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.72
+        },
+        {
+          "question": "أريد استرجاع المعلومات بعد تلف القرص",
+          "expected": "backup",
+          "actual": [
+            "version"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.69
+        },
+        {
+          "question": "ما أعرف اسم الكتاب بس أعرف الكاتب، كيف ألقاه؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "أبي أوصل لمرجع يتكلم عن موضوع محدد",
+          "expected": "search",
+          "actual": [
+            "citation"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.69
+        },
+        {
+          "question": "أين أجد مؤلفًا في رفوف الكتب من خلال اسمه؟",
+          "expected": "search",
+          "actual": [
+            "loan",
+            "timeout",
+            "filter"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.87
+        },
+        {
+          "question": "كيف أستخدم العنوان للوصول إلى الكتاب المطلوب؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "filter",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.71
+        },
+        {
+          "question": "أقدر آخذ الكتاب للبيت وأرجعه بعد أسبوع؟",
+          "expected": "loan",
+          "actual": [
+            "loan",
+            "version",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "ما الخدمة التي تسمح باستعارة مؤلف لفترة مؤقتة؟",
+          "expected": "loan",
+          "actual": [
+            "timeout"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "متى أرد الكتاب اللي أخذته من المكتبة؟",
+          "expected": "loan",
+          "actual": [
+            "search",
+            "loan",
+            "filter"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "أريد قراءة نسخة خارج المكتبة ثم إرجاعها",
+          "expected": "loan",
+          "actual": [
+            "version",
+            "loan",
+            "search"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.81
+        },
+        {
+          "question": "أحتاج أستخدم الموقع بدون ماوس",
+          "expected": "accessibility",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.67
+        },
+        {
+          "question": "كيف أخلي التطبيق مناسبًا لشخص ما يشوف الشاشة؟",
+          "expected": "accessibility",
+          "actual": [
+            "mobile",
+            "accessibility"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.66
+        },
+        {
+          "question": "النص والخلفية نفس اللون تقريبًا، وش تحسين الواجهة المناسب؟",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.53
+        },
+        {
+          "question": "أريد وصف الأزرار بحيث يقرؤها البرنامج الصوتي",
+          "expected": "accessibility",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "هل كلامي بيبقى محفوظ بعد ما أسكر الصفحة؟",
+          "expected": "privacy",
+          "actual": [
+            "version",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.58
+        },
+        {
+          "question": "أبي أسأل بدون تخزين سجل دائم",
+          "expected": "privacy",
+          "actual": [
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "وين تروح الرسائل بعد إنهاء الجلسة؟",
+          "expected": "privacy",
+          "actual": [
+            "version",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "أحتاج طريقة لا تحتفظ بتاريخ أسئلتي على السيرفر",
+          "expected": "privacy",
+          "actual": [
+            "accessibility",
+            "archive",
+            "search"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.51
+        },
+        {
+          "question": "التحديث الجديد فيه مشكلة، أبي أرجع اللي قبله",
+          "expected": "version",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "كيف أجهز تعديلات من غير ما تتغير النسخة اللي يشوفها الناس؟",
+          "expected": "version",
+          "actual": [
+            "backup",
+            "review",
+            "loan"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.51
+        },
+        {
+          "question": "أحتاج التبديل بين النسخ بعد مراجعتها",
+          "expected": "version",
+          "actual": [
+            "backup",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "أريد نشر تحديث ثم استعادة الحالة السابقة عند الفشل",
+          "expected": "version",
+          "actual": [
+            "archive",
+            "loan",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.51
+        },
+        {
+          "question": "من وين جبت هذا الكلام؟",
+          "expected": "citation",
+          "actual": [
+            "citation",
+            "loan",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "أبي أشوف العبارة نفسها في المرجع الأصلي",
+          "expected": "citation",
+          "actual": [
+            "backup",
+            "archive",
+            "search"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "كيف أعرف أي جزء من الرد منقول حرفيًا؟",
+          "expected": "citation",
+          "actual": [
+            "loan",
+            "backup",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "أحتاج رابطًا يؤكد النص المكتوب في الجواب",
+          "expected": "citation",
+          "actual": [
+            "accessibility",
+            "citation",
+            "backup"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "لا تطلع لي نتائج من بقية الكتب",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "loan",
+            "accessibility"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "أبي أبحث في مرجع واحد بس",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "backup",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "كيف أحدد مجموعة بعينها قبل ما أبحث؟",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "review"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "أريد حصر القائمة في الكتاب الذي اخترته",
+          "expected": "filter",
+          "actual": [
+            "search",
+            "filter",
+            "citation"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "أبي أتأكد من كل إضافة قبل ما يشوفونها الناس",
+          "expected": "review",
+          "actual": [
+            "review",
+            "loan",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "من يشيك على المادة قبل السماح بنشرها؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "privacy",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "كيف أمنع وصول نسخة غير مفحوصة للقراء؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "version",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "أريد فحص التحديث والحصول على اعتماد المسؤول أولًا",
+          "expected": "review",
+          "actual": [
+            "review",
+            "archive",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.51
+        },
+        {
+          "question": "الموقع على الجوال طالع برا الشاشة",
+          "expected": "mobile",
+          "actual": [
+            "mobile",
+            "accessibility",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "أبي الصفحة تضبط على الشاشة الصغيرة والكبيرة",
+          "expected": "mobile",
+          "actual": [
+            "privacy",
+            "mobile",
+            "accessibility"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "كيف تتحول الأعمدة إلى صفوف في الهاتف؟",
+          "expected": "mobile",
+          "actual": [
+            "search",
+            "mobile",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.5
+        },
+        {
+          "question": "أحتاج واجهة تتكيف مع عرض جهاز القارئ",
+          "expected": "mobile",
+          "actual": [
+            "search",
+            "mobile",
+            "archive"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.49
+        },
+        {
+          "question": "الطلب علق وما خلص، متى يوقف الانتظار؟",
+          "expected": "timeout",
+          "actual": [
+            "timeout"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 0.7
+        },
+        {
+          "question": "أبي رسالة إذا السيرفر تأخر بدل ما يظل يحمل",
+          "expected": "timeout",
+          "actual": [
+            "review",
+            "backup",
+            "timeout"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 0.55
+        },
+        {
+          "question": "كيف أنهي محاولة بطيئة وأجرب من جديد؟",
+          "expected": "timeout",
+          "actual": [
+            "loan",
+            "backup",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.66
+        },
+        {
+          "question": "أريد تحديد مدة قصوى لانتظار الرد",
+          "expected": "timeout",
+          "actual": [],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 0.83
+        }
+      ]
+    },
+    "semantic": {
+      "cases": 48,
+      "top1": 32,
+      "top3": 44,
+      "median_ms": 12.024999999999999,
+      "p95_ms": 14.87,
+      "results": [
+        {
+          "question": "وين أحط أوراق الأعوام الماضية عشان ألقاها بعدين؟",
+          "expected": "archive",
+          "actual": [
+            "loan",
+            "archive",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 14.46
+        },
+        {
+          "question": "أريد ترتيب الملفات القديمة بطريقة يسهل الرجوع إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "backup",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.31
+        },
+        {
+          "question": "كيف أنظم مستنداتي حسب السنة والموضوع؟",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "search",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.32
+        },
+        {
+          "question": "أحتاج مكانًا لحفظ الأوراق السابقة مع دليل للوصول إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "backup",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.51
+        },
+        {
+          "question": "لو خرب اللابتوب كيف أرجع شغلي؟",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "loan",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.03
+        },
+        {
+          "question": "أبي أحمي بياناتي من الضياع بنسخة ثانية",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "privacy",
+            "accessibility"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.33
+        },
+        {
+          "question": "كيف أحتفظ بصورة إضافية من ملفاتي خارج جهازي؟",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "version",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.28
+        },
+        {
+          "question": "أريد استرجاع المعلومات بعد تلف القرص",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "loan",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 11.48
+        },
+        {
+          "question": "ما أعرف اسم الكتاب بس أعرف الكاتب، كيف ألقاه؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "loan",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.24
+        },
+        {
+          "question": "أبي أوصل لمرجع يتكلم عن موضوع محدد",
+          "expected": "search",
+          "actual": [
+            "citation",
+            "search",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.78
+        },
+        {
+          "question": "أين أجد مؤلفًا في رفوف الكتب من خلال اسمه؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "loan",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.38
+        },
+        {
+          "question": "كيف أستخدم العنوان للوصول إلى الكتاب المطلوب؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "loan",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.42
+        },
+        {
+          "question": "أقدر آخذ الكتاب للبيت وأرجعه بعد أسبوع؟",
+          "expected": "loan",
+          "actual": [
+            "loan",
+            "search",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 17.12
+        },
+        {
+          "question": "ما الخدمة التي تسمح باستعارة مؤلف لفترة مؤقتة؟",
+          "expected": "loan",
+          "actual": [
+            "loan",
+            "timeout",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.77
+        },
+        {
+          "question": "متى أرد الكتاب اللي أخذته من المكتبة؟",
+          "expected": "loan",
+          "actual": [
+            "search",
+            "loan",
+            "filter"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 9.05
+        },
+        {
+          "question": "أريد قراءة نسخة خارج المكتبة ثم إرجاعها",
+          "expected": "loan",
+          "actual": [
+            "search",
+            "loan",
+            "backup"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 13.05
+        },
+        {
+          "question": "أحتاج أستخدم الموقع بدون ماوس",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "backup",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.51
+        },
+        {
+          "question": "كيف أخلي التطبيق مناسبًا لشخص ما يشوف الشاشة؟",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "privacy",
+            "mobile"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.5
+        },
+        {
+          "question": "النص والخلفية نفس اللون تقريبًا، وش تحسين الواجهة المناسب؟",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 15.08
+        },
+        {
+          "question": "أريد وصف الأزرار بحيث يقرؤها البرنامج الصوتي",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "privacy",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.32
+        },
+        {
+          "question": "هل كلامي بيبقى محفوظ بعد ما أسكر الصفحة؟",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "backup",
+            "review"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.04
+        },
+        {
+          "question": "أبي أسأل بدون تخزين سجل دائم",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "backup",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.2
+        },
+        {
+          "question": "وين تروح الرسائل بعد إنهاء الجلسة؟",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "review",
+            "timeout"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.54
+        },
+        {
+          "question": "أحتاج طريقة لا تحتفظ بتاريخ أسئلتي على السيرفر",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "search",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.16
+        },
+        {
+          "question": "التحديث الجديد فيه مشكلة، أبي أرجع اللي قبله",
+          "expected": "version",
+          "actual": [
+            "review",
+            "accessibility",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 8.79
+        },
+        {
+          "question": "كيف أجهز تعديلات من غير ما تتغير النسخة اللي يشوفها الناس؟",
+          "expected": "version",
+          "actual": [
+            "version",
+            "backup",
+            "review"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.87
+        },
+        {
+          "question": "أحتاج التبديل بين النسخ بعد مراجعتها",
+          "expected": "version",
+          "actual": [
+            "backup",
+            "version",
+            "review"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 9.63
+        },
+        {
+          "question": "أريد نشر تحديث ثم استعادة الحالة السابقة عند الفشل",
+          "expected": "version",
+          "actual": [
+            "version",
+            "review",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.52
+        },
+        {
+          "question": "من وين جبت هذا الكلام؟",
+          "expected": "citation",
+          "actual": [
+            "privacy",
+            "citation",
+            "accessibility"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.11
+        },
+        {
+          "question": "أبي أشوف العبارة نفسها في المرجع الأصلي",
+          "expected": "citation",
+          "actual": [
+            "archive",
+            "search",
+            "citation"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 13.15
+        },
+        {
+          "question": "كيف أعرف أي جزء من الرد منقول حرفيًا؟",
+          "expected": "citation",
+          "actual": [
+            "search",
+            "citation",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 10.27
+        },
+        {
+          "question": "أحتاج رابطًا يؤكد النص المكتوب في الجواب",
+          "expected": "citation",
+          "actual": [
+            "citation",
+            "search",
+            "accessibility"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.77
+        },
+        {
+          "question": "لا تطلع لي نتائج من بقية الكتب",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "review",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 11.72
+        },
+        {
+          "question": "أبي أبحث في مرجع واحد بس",
+          "expected": "filter",
+          "actual": [
+            "search",
+            "filter",
+            "archive"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 10.1
+        },
+        {
+          "question": "كيف أحدد مجموعة بعينها قبل ما أبحث؟",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "search",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.54
+        },
+        {
+          "question": "أريد حصر القائمة في الكتاب الذي اخترته",
+          "expected": "filter",
+          "actual": [
+            "search",
+            "filter",
+            "loan"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 14.06
+        },
+        {
+          "question": "أبي أتأكد من كل إضافة قبل ما يشوفونها الناس",
+          "expected": "review",
+          "actual": [
+            "review",
+            "accessibility",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.68
+        },
+        {
+          "question": "من يشيك على المادة قبل السماح بنشرها؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "privacy",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.98
+        },
+        {
+          "question": "كيف أمنع وصول نسخة غير مفحوصة للقراء؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "version",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.54
+        },
+        {
+          "question": "أريد فحص التحديث والحصول على اعتماد المسؤول أولًا",
+          "expected": "review",
+          "actual": [
+            "review",
+            "accessibility",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.02
+        },
+        {
+          "question": "الموقع على الجوال طالع برا الشاشة",
+          "expected": "mobile",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "search"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 7.97
+        },
+        {
+          "question": "أبي الصفحة تضبط على الشاشة الصغيرة والكبيرة",
+          "expected": "mobile",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "search"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 9.28
+        },
+        {
+          "question": "كيف تتحول الأعمدة إلى صفوف في الهاتف؟",
+          "expected": "mobile",
+          "actual": [
+            "mobile",
+            "accessibility",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.56
+        },
+        {
+          "question": "أحتاج واجهة تتكيف مع عرض جهاز القارئ",
+          "expected": "mobile",
+          "actual": [
+            "accessibility",
+            "search",
+            "version"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 14.1
+        },
+        {
+          "question": "الطلب علق وما خلص، متى يوقف الانتظار؟",
+          "expected": "timeout",
+          "actual": [
+            "timeout",
+            "review",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.47
+        },
+        {
+          "question": "أبي رسالة إذا السيرفر تأخر بدل ما يظل يحمل",
+          "expected": "timeout",
+          "actual": [
+            "backup",
+            "privacy",
+            "archive"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 11.67
+        },
+        {
+          "question": "كيف أنهي محاولة بطيئة وأجرب من جديد؟",
+          "expected": "timeout",
+          "actual": [
+            "review",
+            "filter",
+            "backup"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 13.38
+        },
+        {
+          "question": "أريد تحديد مدة قصوى لانتظار الرد",
+          "expected": "timeout",
+          "actual": [
+            "timeout",
+            "review",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 11.83
+        }
+      ]
+    },
+    "hybrid": {
+      "cases": 48,
+      "top1": 29,
+      "top3": 44,
+      "median_ms": 12.125,
+      "p95_ms": 14.51,
+      "results": [
+        {
+          "question": "وين أحط أوراق الأعوام الماضية عشان ألقاها بعدين؟",
+          "expected": "archive",
+          "actual": [
+            "loan",
+            "archive",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 15.41
+        },
+        {
+          "question": "أريد ترتيب الملفات القديمة بطريقة يسهل الرجوع إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "version",
+            "mobile"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.07
+        },
+        {
+          "question": "كيف أنظم مستنداتي حسب السنة والموضوع؟",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "search",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.33
+        },
+        {
+          "question": "أحتاج مكانًا لحفظ الأوراق السابقة مع دليل للوصول إليها",
+          "expected": "archive",
+          "actual": [
+            "archive",
+            "accessibility",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.4
+        },
+        {
+          "question": "لو خرب اللابتوب كيف أرجع شغلي؟",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "loan",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.26
+        },
+        {
+          "question": "أبي أحمي بياناتي من الضياع بنسخة ثانية",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "privacy",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.87
+        },
+        {
+          "question": "كيف أحتفظ بصورة إضافية من ملفاتي خارج جهازي؟",
+          "expected": "backup",
+          "actual": [
+            "backup",
+            "loan",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.47
+        },
+        {
+          "question": "أريد استرجاع المعلومات بعد تلف القرص",
+          "expected": "backup",
+          "actual": [
+            "version",
+            "backup",
+            "loan"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.94
+        },
+        {
+          "question": "ما أعرف اسم الكتاب بس أعرف الكاتب، كيف ألقاه؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "filter",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.36
+        },
+        {
+          "question": "أبي أوصل لمرجع يتكلم عن موضوع محدد",
+          "expected": "search",
+          "actual": [
+            "citation",
+            "search",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 9.1
+        },
+        {
+          "question": "أين أجد مؤلفًا في رفوف الكتب من خلال اسمه؟",
+          "expected": "search",
+          "actual": [
+            "loan",
+            "search",
+            "filter"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.5
+        },
+        {
+          "question": "كيف أستخدم العنوان للوصول إلى الكتاب المطلوب؟",
+          "expected": "search",
+          "actual": [
+            "search",
+            "filter",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.31
+        },
+        {
+          "question": "أقدر آخذ الكتاب للبيت وأرجعه بعد أسبوع؟",
+          "expected": "loan",
+          "actual": [
+            "loan",
+            "search",
+            "version"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.78
+        },
+        {
+          "question": "ما الخدمة التي تسمح باستعارة مؤلف لفترة مؤقتة؟",
+          "expected": "loan",
+          "actual": [
+            "timeout",
+            "loan",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.02
+        },
+        {
+          "question": "متى أرد الكتاب اللي أخذته من المكتبة؟",
+          "expected": "loan",
+          "actual": [
+            "search",
+            "loan",
+            "filter"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 14.51
+        },
+        {
+          "question": "أريد قراءة نسخة خارج المكتبة ثم إرجاعها",
+          "expected": "loan",
+          "actual": [
+            "search",
+            "loan",
+            "version"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.23
+        },
+        {
+          "question": "أحتاج أستخدم الموقع بدون ماوس",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "backup",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.31
+        },
+        {
+          "question": "كيف أخلي التطبيق مناسبًا لشخص ما يشوف الشاشة؟",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.71
+        },
+        {
+          "question": "النص والخلفية نفس اللون تقريبًا، وش تحسين الواجهة المناسب؟",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "citation"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.48
+        },
+        {
+          "question": "أريد وصف الأزرار بحيث يقرؤها البرنامج الصوتي",
+          "expected": "accessibility",
+          "actual": [
+            "accessibility",
+            "privacy",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.44
+        },
+        {
+          "question": "هل كلامي بيبقى محفوظ بعد ما أسكر الصفحة؟",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "version",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.72
+        },
+        {
+          "question": "أبي أسأل بدون تخزين سجل دائم",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "backup",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.93
+        },
+        {
+          "question": "وين تروح الرسائل بعد إنهاء الجلسة؟",
+          "expected": "privacy",
+          "actual": [
+            "privacy",
+            "version",
+            "review"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 8.81
+        },
+        {
+          "question": "أحتاج طريقة لا تحتفظ بتاريخ أسئلتي على السيرفر",
+          "expected": "privacy",
+          "actual": [
+            "search",
+            "accessibility",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 10.3
+        },
+        {
+          "question": "التحديث الجديد فيه مشكلة، أبي أرجع اللي قبله",
+          "expected": "version",
+          "actual": [
+            "review",
+            "accessibility",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 8.89
+        },
+        {
+          "question": "كيف أجهز تعديلات من غير ما تتغير النسخة اللي يشوفها الناس؟",
+          "expected": "version",
+          "actual": [
+            "backup",
+            "version",
+            "review"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 14.05
+        },
+        {
+          "question": "أحتاج التبديل بين النسخ بعد مراجعتها",
+          "expected": "version",
+          "actual": [
+            "backup",
+            "version",
+            "review"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 11.3
+        },
+        {
+          "question": "أريد نشر تحديث ثم استعادة الحالة السابقة عند الفشل",
+          "expected": "version",
+          "actual": [
+            "version",
+            "loan",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.03
+        },
+        {
+          "question": "من وين جبت هذا الكلام؟",
+          "expected": "citation",
+          "actual": [
+            "citation",
+            "privacy",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.81
+        },
+        {
+          "question": "أبي أشوف العبارة نفسها في المرجع الأصلي",
+          "expected": "citation",
+          "actual": [
+            "archive",
+            "search",
+            "backup"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 9.67
+        },
+        {
+          "question": "كيف أعرف أي جزء من الرد منقول حرفيًا؟",
+          "expected": "citation",
+          "actual": [
+            "privacy",
+            "backup",
+            "loan"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 10.52
+        },
+        {
+          "question": "أحتاج رابطًا يؤكد النص المكتوب في الجواب",
+          "expected": "citation",
+          "actual": [
+            "citation",
+            "accessibility",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.14
+        },
+        {
+          "question": "لا تطلع لي نتائج من بقية الكتب",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "loan",
+            "accessibility"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.15
+        },
+        {
+          "question": "أبي أبحث في مرجع واحد بس",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "search",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 10.82
+        },
+        {
+          "question": "كيف أحدد مجموعة بعينها قبل ما أبحث؟",
+          "expected": "filter",
+          "actual": [
+            "filter",
+            "review",
+            "search"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 9.55
+        },
+        {
+          "question": "أريد حصر القائمة في الكتاب الذي اخترته",
+          "expected": "filter",
+          "actual": [
+            "search",
+            "filter",
+            "citation"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 8.92
+        },
+        {
+          "question": "أبي أتأكد من كل إضافة قبل ما يشوفونها الناس",
+          "expected": "review",
+          "actual": [
+            "review",
+            "backup",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.09
+        },
+        {
+          "question": "من يشيك على المادة قبل السماح بنشرها؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "privacy",
+            "loan"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 15.06
+        },
+        {
+          "question": "كيف أمنع وصول نسخة غير مفحوصة للقراء؟",
+          "expected": "review",
+          "actual": [
+            "review",
+            "version",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 14.41
+        },
+        {
+          "question": "أريد فحص التحديث والحصول على اعتماد المسؤول أولًا",
+          "expected": "review",
+          "actual": [
+            "review",
+            "search",
+            "archive"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 13.16
+        },
+        {
+          "question": "الموقع على الجوال طالع برا الشاشة",
+          "expected": "mobile",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "search"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 11.63
+        },
+        {
+          "question": "أبي الصفحة تضبط على الشاشة الصغيرة والكبيرة",
+          "expected": "mobile",
+          "actual": [
+            "accessibility",
+            "mobile",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 8.45
+        },
+        {
+          "question": "كيف تتحول الأعمدة إلى صفوف في الهاتف؟",
+          "expected": "mobile",
+          "actual": [
+            "mobile",
+            "search",
+            "backup"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 11.45
+        },
+        {
+          "question": "أحتاج واجهة تتكيف مع عرض جهاز القارئ",
+          "expected": "mobile",
+          "actual": [
+            "search",
+            "accessibility",
+            "mobile"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.47
+        },
+        {
+          "question": "الطلب علق وما خلص، متى يوقف الانتظار؟",
+          "expected": "timeout",
+          "actual": [
+            "timeout",
+            "review",
+            "filter"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 12.86
+        },
+        {
+          "question": "أبي رسالة إذا السيرفر تأخر بدل ما يظل يحمل",
+          "expected": "timeout",
+          "actual": [
+            "backup",
+            "review",
+            "timeout"
+          ],
+          "top1": false,
+          "top3": true,
+          "milliseconds": 12.88
+        },
+        {
+          "question": "كيف أنهي محاولة بطيئة وأجرب من جديد؟",
+          "expected": "timeout",
+          "actual": [
+            "loan",
+            "backup",
+            "privacy"
+          ],
+          "top1": false,
+          "top3": false,
+          "milliseconds": 10.67
+        },
+        {
+          "question": "أريد تحديد مدة قصوى لانتظار الرد",
+          "expected": "timeout",
+          "actual": [
+            "timeout",
+            "review",
+            "privacy"
+          ],
+          "top1": true,
+          "top3": true,
+          "milliseconds": 11.53
+        }
+      ]
+    }
+  }
+}

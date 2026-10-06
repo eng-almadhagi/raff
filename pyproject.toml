@@ -1,0 +1,9 @@
+[project]
+name = "raf-library"
+version = "0.7.0"
+description = "Arabic source-grounded library with isolated, validated book releases"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+line-length = 100

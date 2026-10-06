@@ -1,0 +1,2 @@
+# Production WSGI server. Development and tests use Python's standard library.
+waitress==3.0.2

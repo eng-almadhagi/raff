@@ -1,0 +1,12 @@
+services:
+  raf:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - raf-data:/app/var
+    environment:
+      RAF_REQUESTS_PER_MINUTE: "20"
+    restart: unless-stopped
+volumes:
+  raf-data:
