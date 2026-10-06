@@ -9,7 +9,7 @@ import {
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.9.3";
+} from "./relevance.mjs?v=0.9.4";
 
 export const bucket = (text) => {
   let h = 0;
@@ -184,29 +184,35 @@ export class PagedEngine {
     }
     const book = this.loaded.get(meta.id);
     if (vectors && !book.focus) {
-      book.focus = decode(
-        await checked(base + "focus.i8", meta.hashes["focus.i8"], true),
-      );
-      if (book.focus.length !== meta.units * 384)
+      const [focusBuffer, chunkBuffer, chunkUnits] = await Promise.all([
+        checked(base + "focus.i8", meta.hashes["focus.i8"], true),
+        meta.has_chunks
+          ? checked(base + "chunks.i8", meta.hashes["chunks.i8"], true)
+          : null,
+        meta.has_chunks
+          ? checked(
+              base + "chunk-units.json",
+              meta.hashes["chunk-units.json"],
+              false,
+              meta.compression === "gzip",
+            )
+          : null,
+      ]);
+      const focus = decode(focusBuffer),
+        chunks = chunkBuffer ? decode(chunkBuffer) : null;
+      if (focus.length !== meta.units * 384)
         throw Error("Invalid vector dimensions");
       if (meta.has_chunks) {
-        book.chunks = decode(
-          await checked(base + "chunks.i8", meta.hashes["chunks.i8"], true),
-        );
-        book.chunkUnits = await checked(
-          base + "chunk-units.json",
-          meta.hashes["chunk-units.json"],
-          false,
-          meta.compression === "gzip",
-        );
         if (
-          book.chunks.length !== book.chunkUnits.length * 384 ||
-          book.chunkUnits.some(
+          chunks.length !== chunkUnits.length * 384 ||
+          chunkUnits.some(
             (i) => !Number.isInteger(i) || i < 0 || i >= meta.units,
           )
         )
           throw Error("Invalid passage index");
       }
+      // Commit only a complete validated set, so a failed download is retryable.
+      Object.assign(book, { focus, chunks, chunkUnits });
     }
     return book;
   }

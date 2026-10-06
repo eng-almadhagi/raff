@@ -78,6 +78,26 @@ test("corrupt file and source identity mismatch are rejected", async () => {
   b.index[0].sha256 = "wrong";
   await assert.rejects(e.citation(metas[1], unit("en").id), /mismatch/);
 });
+
+test("an interrupted passage download does not cache a partial vector index", async () => {
+  let fail = true;
+  const meta = { ...metas[1], has_chunks: true };
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("index.json"))
+      return new Response(JSON.stringify([{ ...unit("en"), shard: 0 }]));
+    if (url.endsWith("chunk-units.json")) return new Response("[0]");
+    if (url.endsWith("chunks.i8") && fail)
+      return new Response("", { status: 503 });
+    return new Response(new Int8Array(384).fill(1));
+  };
+  const engine = new PagedEngine([meta], vocabulary, () => []);
+  await assert.rejects(engine.load(meta, true), /503/);
+  assert.equal(engine.loaded.get(meta.id).focus, undefined);
+  fail = false;
+  const book = await engine.load(meta, true);
+  assert.equal(book.focus.length, 384);
+  assert.equal(book.chunks.length, 384);
+});
 test("query normalization is reusable and leaves source strings untouched", () => {
   assert.match(
     searchQuery("ينفع أمسح على الشراب الخفيف؟", "ar"),
