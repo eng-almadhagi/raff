@@ -79,7 +79,46 @@ test("a topic listed only in a multi-part question is not answer evidence", () =
 });
 
 test("transliterated unit spellings match without altering the source", () => {
- assert.deepEqual(intentTerms("rakahs", vocabulary),intentTerms("rak’ahs", vocabulary));
- assert.equal(answerSupportsQuestion({answer:"A telescope has three lenses."},"minimum lenses",vocabulary),false);
- assert.equal(answerSupportsQuestion({answer:"The minimum is two lenses."},"minimum lenses",vocabulary),true);
+  assert.deepEqual(
+    intentTerms("rakahs", vocabulary),
+    intentTerms("rak’ahs", vocabulary),
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "A telescope has three lenses." },
+      "minimum lenses",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "The minimum is two lenses." },
+      "minimum lenses",
+      vocabulary,
+    ),
+    true,
+  );
+});
+
+test("a negative exception does not explain a requested before/after comparison", () => {
+  assert.equal(
+    answerSupportsQuestion(
+      { answer: "لا يلزم هذا الإجراء لا قبل الاختبار ولا بعده." },
+      "الإجراء قبل الاختبار وبعده",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        answer:
+          "قبل الاختبار يستعمل الإجراء الأول، وبعده يستعمل الإجراء الثاني.",
+      },
+      "الإجراء قبل الاختبار وبعده",
+      vocabulary,
+    ),
+    true,
+  );
 });

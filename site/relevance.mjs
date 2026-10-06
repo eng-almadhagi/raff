@@ -91,7 +91,8 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
   if (!question || !answer) return false;
   if (
     /قبل.+بعد/u.test(question) &&
-    !(answer.includes("قبل") && answer.includes("بعد"))
+    (!(answer.includes("قبل") && answer.includes("بعد")) ||
+      /لا[^.\n]{0,100}قبل[^.\n]{0,100}ولا بعد/u.test(answer))
   )
     return false;
   const requested = intentTerms(question, vocabulary);
