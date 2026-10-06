@@ -45,6 +45,10 @@ export function searchQuery(question, language) {
       .replace(/rak[’'‘`-]?a[’']?h?s?/giu, "rakahs")
       .replace(/\b(?:least|fewest)\b/giu, "minimum")
       .replace(
+        /^how many (.+?) (?:is|are) the minimum\b/iu,
+        "What is the minimum number of $1",
+      )
+      .replace(
         /^(?:what (?:is said|do (?:your|the) sources say) about)\s*/iu,
         "",
       );

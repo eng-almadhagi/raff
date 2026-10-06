@@ -43,6 +43,14 @@ test("explicit actions and circumstances must be supported across topics", () =>
 });
 test("amount and time requests require evidence of that answer type in public and private passages", () => {
   assert.equal(
+    verdict(
+      "متى تُرسل الهدية؟",
+      "نوع الهدية",
+      "الهدية كتاب يفيد الطفل يوم العيد.",
+    ),
+    "related",
+  );
+  assert.equal(
     verdict("كم مدة الاستعارة؟", "مدة الاستعارة", "يجب المحافظة على الكتاب."),
     "related",
   );

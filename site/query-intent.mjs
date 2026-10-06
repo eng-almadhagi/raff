@@ -171,6 +171,15 @@ export function assessIntent(question, unit, { passage = false } = {}) {
   if (answer) {
     const a = normalize(answer);
     if (
+      requested.type === "time" &&
+      source.type !== "time" &&
+      questionProfile(unit.question || "").type !== "time" &&
+      !/(?:قبل|بعد|خلال|حتي|ابتداء|يبدا|تبدا|ينتهي|تنتهي|تفتح|يفتح|تغلق|يغلق|الساع[ةه]|صباح|مساء|\b(?:before|after|until|within|starts?|ends?|begins?|between)\b)/iu.test(
+        a,
+      )
+    )
+      reasons.push("missing-time-relation");
+    if (
       requested.type === "reason" &&
       !/لان|بسبب|السبب|سبب|العلة|علة|وذلك|من اجل|حيث|لما |\b(?:because|since|reason|due to|so that)\b/iu.test(
         a,
