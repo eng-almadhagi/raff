@@ -3,13 +3,13 @@ import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.10.0";
+} from "./policy.mjs?v=0.10.1";
 import {
   prepareSubjects,
   subjectQuery,
   subjectMatch,
   answerSupportsQuestion,
-} from "./relevance.mjs?v=0.10.0";
+} from "./relevance.mjs?v=0.10.1";
 
 export const bucket = (text) => {
   let h = 0;

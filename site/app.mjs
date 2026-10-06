@@ -1,6 +1,6 @@
 import { normalize } from "./core.mjs";
 import { createLibrary } from "./library-ui.mjs";
-import { copy } from "./i18n.mjs?v=0.10.0";
+import { copy } from "./i18n.mjs?v=0.10.1";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -334,7 +334,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.10.0", import.meta.url),
+    new URL("./search-worker.mjs?v=0.10.1", import.meta.url),
     {
       type: "module",
     },
@@ -443,8 +443,8 @@ function translate() {
     el(
       "p",
       language === "ar"
-        ? "هذه النسخة متاحة لأغراض المشاركة في المسابقة. يلتزم فريق رَفّ بإيقاف الإتاحة العامة للمحتوى بعد انتهائها، وعدم إعادة إتاحته إلا بعد الحصول على أذونات النشر اللازمة من أصحاب الحقوق. تُنسب النصوص إلى مصادرها الأصلية مع روابطها، ولا يُعد عرضها ادعاءً بامتلاك حقوقها."
-        : "This version is available for participation in the competition. The Raff team commits to ending public access to the content after the competition ends and not making it available again until the necessary publication permissions have been obtained from the rights holders. Texts are attributed to their original sources with links; displaying them does not constitute a claim of ownership of their rights.",
+        ? "لن يتم الإطلاق العام الرسمي لموقع رَفّ إلا بعد الحصول على موافقة رسمية من أصحاب حقوق كتاب «فتاوى إسلامية» ومن القائمين على موقع «الإسلام سؤال وجواب» على استخدام محتواهما ونشره ضمن المنصة. النسخة الحالية متاحة لأغراض المشاركة في المسابقة؛ ويلتزم فريق رَفّ بإيقاف الإتاحة العامة للمحتوى بعد انتهائها، وعدم إعادة إتاحته إلا بعد الحصول على الأذونات اللازمة. تُنسب النصوص إلى مصادرها الأصلية مع روابطها، ولا يُعد عرضها ادعاءً بامتلاك حقوقها أو بالحصول على موافقة لم تصدر بعد."
+        : "Raff will not have an official public launch until formal permission has been obtained from the rights holders of Fatawa Islamiyyah and the operators of Islam Question & Answer to use and publish their content within the platform. The current version is available for participation in the competition. The Raff team commits to ending public access to the content after the competition ends and not making it available again until the necessary permissions have been obtained. Texts are attributed to their original sources with links; displaying them does not claim ownership of their rights or permission that has not yet been granted.",
       "notice",
     ),
     el(
@@ -458,6 +458,57 @@ function translate() {
       language === "ar"
         ? "نُشرت النسخة بقرار مسؤول المنصة؛ لم يُثبت ترخيص إعادة نشر شامل. الإتاحة المجانية والحزمة الرسمية لا تثبتان هذا الترخيص. الإسلام سؤال وجواب غير معتمد صراحة في ملفات المسابقة المتاحة؛ يمكن تعطيله بوضع المسابقة."
         : "This preview is published by the platform operator’s decision; a blanket redistribution license has not been established. Free access and official offline packages do not establish such a license. IslamQA is not explicitly approved in the available competition documents and can be disabled in competition mode.",
+    ),
+  );
+  method.append(
+    el("h3", language === "ar" ? "التعريف بالمصادر" : "About the sources"),
+  );
+  const sourceProfiles =
+    language === "ar"
+      ? [
+          {
+            title: "كتاب «فتاوى إسلامية»",
+            text: "مجموعة فتاوى جمعها ورتّبها محمد بن عبد العزيز المسند. يعرض الموقع الرسمي للشيخ عبد العزيز بن باز الكتاب في أربعة أجزاء. يستخدم رَفّ نسخته النصية ذات المعرّف 1708، ويُبقي كل فتوى منسوبة إلى قائلها مع موضعها في الكتاب؛ فجامع الكتاب ليس بالضرورة صاحب كل فتوى فيه.",
+            label: "التعريف بالكتاب في الموقع الرسمي للشيخ ابن باز",
+            url: "https://binbaz.org.sa/books/31/فتاوى-اسلامية-جمع-وترتيب-محمد-عبدالعزيز-المسند",
+          },
+          {
+            title: "موقع «الإسلام سؤال وجواب»",
+            text: "موقع يقدّم إجابات شرعية ومواد معرفية وتربوية بلغات متعددة. بحسب صفحة التعريف الرسمية، يشرف الشيخ محمد صالح المنجد على إجاباته، ويستند منهجه إلى القرآن والسنة وأقوال أهل العلم. يعرض رَفّ النص المنقول مع رقم الإجابة ورابطها؛ ويستخدم البحث العام الإنجليزي المحتوى الإنجليزي المنشور في الموقع نفسه.",
+            label: "صفحة «حول الموقع» الرسمية",
+            url: "https://islamqa.info/ar/about-us",
+          },
+        ]
+      : [
+          {
+            title: "Fatawa Islamiyyah",
+            text: "A collection of fatwas compiled and arranged by Muhammad ibn Abd al-Aziz al-Musnad. The official Ibn Baz website lists four parts of the book. Raff uses the text edition identified as 1708 and attributes each fatwa to its original author with its location in the book; the compiler is not necessarily the author of every fatwa.",
+            label: "Book listing on the official Ibn Baz website",
+            url: "https://binbaz.org.sa/books/31/فتاوى-اسلامية-جمع-وترتيب-محمد-عبدالعزيز-المسند",
+          },
+          {
+            title: "Islam Question & Answer (IslamQA)",
+            text: "A multilingual website offering Islamic answers and educational material. Its official introduction names Sheikh Muhammad Salih al-Munajjid as supervisor of its answers and describes a methodology based on the Quran, Sunnah and scholarly writings. Raff retains the original answer number and link. Public English search uses the website’s published English content.",
+            label: "Official introduction to IslamQA",
+            url: "https://islamqa.info/ar/about-us",
+          },
+        ];
+  for (const profile of sourceProfiles) {
+    const card = el("article", undefined, "source-profile");
+    const link = el("a", profile.label);
+    link.href = profile.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    card.append(el("h4", profile.title), el("p", profile.text), link);
+    method.append(card);
+  }
+  method.append(
+    el(
+      "p",
+      language === "ar"
+        ? "التعريف بالمصدر والإحالة إليه لا يعنيان وجود شراكة أو موافقة رسمية على رَفّ، ولا ينقلان ملكية النصوص إلى المشروع."
+        : "Describing and linking a source does not imply a partnership or official approval of Raff, and does not transfer ownership of its texts to this project.",
+      "notice",
     ),
   );
   method.append(
