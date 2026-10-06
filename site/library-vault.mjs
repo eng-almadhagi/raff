@@ -1,4 +1,4 @@
-import { libraryDB } from "./library-store.mjs?v=0.16.1";
+import { libraryDB } from "./library-store.mjs?v=0.16.2";
 
 export const VAULT_VERSION = 1;
 export const MAX_BACKUP_BYTES = 150_000_000;

@@ -1,7 +1,7 @@
-import { normalize } from "./core.mjs?v=0.16.1";
-import { createLibrary } from "./library-ui.mjs?v=0.16.1";
-import { copy } from "./i18n.mjs?v=0.16.1";
-import { clarificationChoices } from "./policy.mjs?v=0.16.1";
+import { normalize } from "./core.mjs?v=0.16.2";
+import { createLibrary } from "./library-ui.mjs?v=0.16.2";
+import { copy } from "./i18n.mjs?v=0.16.2";
+import { clarificationChoices } from "./policy.mjs?v=0.16.2";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -343,7 +343,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.16.1", import.meta.url),
+    new URL("./search-worker.mjs?v=0.16.2", import.meta.url),
     {
       type: "module",
     },
@@ -388,8 +388,6 @@ function initialize() {
 function translate() {
   $("library-nav").textContent =
     language === "ar" ? "▤ مكتبتي" : "▤ My library";
-  $("add-shelf-nav").textContent =
-    language === "ar" ? "⊕ إضافة رف" : "⊕ Add shelf";
   document.documentElement.lang = language;
   document.documentElement.dir = t().dir;
   document.title =
@@ -617,6 +615,11 @@ async function ask() {
     sourceIds: selected(),
   });
 }
+$("question").onkeydown = (e) => {
+  if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+  e.preventDefault();
+  if (!$("submit").disabled) $("ask-form").requestSubmit();
+};
 $("ask-form").onsubmit = (e) => {
   e.preventDefault();
   ask();
@@ -630,7 +633,6 @@ $("home").onclick = () => show("home");
 $("about").onclick = () => show("about");
 $("method").onclick = () => show("method");
 $("library-nav").onclick = () => show("library");
-$("add-shelf-nav").onclick = () => personalLibrary.addShelf();
 function changeScope() {
   const currentPage = page;
   $("result").replaceChildren();

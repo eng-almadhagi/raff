@@ -717,23 +717,7 @@ html[dir="ltr"] .evidence blockquote {
 #library-save-status {
   white-space: pre-wrap;
 }
-#library-panel.library-expanded {
-  position: fixed;
-  inset: 10px;
-  z-index: 100;
-  margin: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  background: var(--surface, #fff);
-}
-#library-panel.library-expanded[hidden] {
-  display: none;
-}
 @media (max-width: 600px) {
-  #library-panel.library-expanded {
-    inset: 0;
-    border-radius: 0;
-  }
   .library-toolbar button {
     flex: 1 1 130px;
     min-height: 44px;

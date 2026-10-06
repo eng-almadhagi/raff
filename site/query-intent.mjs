@@ -1,4 +1,4 @@
-import { normalize } from "./core.mjs?v=0.16.1";
+import { normalize } from "./core.mjs?v=0.16.2";
 
 // Shared question/answer compatibility, independent of books, IDs and test queries.
 // These describe actions and constraints, not religious conclusions.

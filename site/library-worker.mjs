@@ -1,6 +1,6 @@
-import { importBook } from "./library-core.mjs?v=0.16.1";
-import { extractDocument } from "./document-import.mjs?v=0.16.1";
-import { semanticLibrarySearch } from "./library-semantic.mjs?v=0.16.1";
+import { importBook } from "./library-core.mjs?v=0.16.2";
+import { extractDocument } from "./document-import.mjs?v=0.16.2";
+import { semanticLibrarySearch } from "./library-semantic.mjs?v=0.16.2";
 self.onmessage = async ({ data }) => {
   try {
     let extraction;

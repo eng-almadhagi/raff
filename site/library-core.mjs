@@ -1,4 +1,4 @@
-import { normalize } from "./core.mjs?v=0.16.1";
+import { normalize } from "./core.mjs?v=0.16.2";
 
 export const LIBRARY_VERSION = 1;
 const stop = new Set(

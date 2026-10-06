@@ -5,12 +5,12 @@ import {
   decodeBackup,
   mergeSnapshot,
   MAX_BACKUP_BYTES,
-} from "./library-vault.mjs?v=0.16.1";
+} from "./library-vault.mjs?v=0.16.2";
 import {
   classifyLibraryPolicy,
   policyMessages,
   clarificationChoices,
-} from "./policy.mjs?v=0.16.1";
+} from "./policy.mjs?v=0.16.2";
 
 export function createLibrary({
   panel,
@@ -152,16 +152,10 @@ export function createLibrary({
       : "";
   const toolbar = node("div", "", "library-toolbar"),
     heading = node("h2"),
-    maximize = button("", () => {
-      panel.classList.toggle("library-expanded");
-      renderLabels();
-    }),
     close = button("", () => {
-      panel.classList.remove("library-expanded");
-      renderLabels();
       navigate("ask");
     });
-  toolbar.append(heading, maximize, close);
+  toolbar.append(heading, close);
   const notice = node("p", "", "notice"),
     message = node("p");
   message.setAttribute("role", "status");
@@ -255,13 +249,6 @@ export function createLibrary({
     summary.textContent = tr(
       "⊕ إضافة رف وإدارة الحفظ والكتب",
       "⊕ Add a shelf, storage and books",
-    );
-    maximize.textContent = panel.classList.contains("library-expanded")
-      ? tr("تصغير الشاشة", "Restore window")
-      : tr("تكبير الشاشة", "Expand window");
-    maximize.setAttribute(
-      "aria-pressed",
-      String(panel.classList.contains("library-expanded")),
     );
     close.textContent = tr(
       "إغلاق والعودة للرئيسية",
@@ -854,6 +841,11 @@ export function createLibrary({
       }
     }
   }
+  questionInput.onkeydown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    if (!submit.disabled) form.requestSubmit();
+  };
   form.onsubmit = (e) => {
     e.preventDefault();
     executeSearch();
@@ -875,7 +867,7 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.16.1", import.meta.url),
+      new URL("./library-worker.mjs?v=0.16.2", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {

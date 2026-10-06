@@ -1,6 +1,6 @@
-import { libraryTerms } from "./library-core.mjs?v=0.16.1";
-import { libraryDB } from "./library-store.mjs?v=0.16.1";
-import { assessIntent } from "./query-intent.mjs?v=0.16.1";
+import { libraryTerms } from "./library-core.mjs?v=0.16.2";
+import { libraryDB } from "./library-store.mjs?v=0.16.2";
+import { assessIntent } from "./query-intent.mjs?v=0.16.2";
 
 const VERSION = "e5-q8-passages-v3";
 export function lexicalCandidates(books, question) {

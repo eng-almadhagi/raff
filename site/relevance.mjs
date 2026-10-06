@@ -1,5 +1,5 @@
-import { terms, normalize } from "./core.mjs?v=0.16.1";
-import { assessIntent, questionProfile } from "./query-intent.mjs?v=0.16.1";
+import { terms, normalize } from "./core.mjs?v=0.16.2";
+import { assessIntent, questionProfile } from "./query-intent.mjs?v=0.16.2";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
