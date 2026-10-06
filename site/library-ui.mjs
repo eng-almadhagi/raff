@@ -1,9 +1,9 @@
-import { libraryDB } from "./library-store.mjs?v=0.14.2";
+import { libraryDB } from "./library-store.mjs?v=0.15.1";
 import {
   classifyLibraryPolicy,
   policyMessages,
   clarificationChoices,
-} from "./policy.mjs?v=0.14.2";
+} from "./policy.mjs?v=0.15.1";
 
 export function createLibrary({
   panel,
@@ -41,7 +41,7 @@ export function createLibrary({
   function resetWorker() {
     worker?.terminate();
     worker = new Worker(
-      new URL("./library-worker.mjs?v=0.14.2", import.meta.url),
+      new URL("./library-worker.mjs?v=0.15.1", import.meta.url),
       { type: "module" },
     );
     worker.onmessage = ({ data }) => {

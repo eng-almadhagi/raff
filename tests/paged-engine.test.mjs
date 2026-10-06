@@ -216,8 +216,9 @@ test("a qualified source case is a suggestion, never a forced per-source answer 
     ...unit("ar"),
     id: "rental",
     title: "زكاة أجرة السكن والمحلات",
-    answer: "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها.",
-    text: "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها.",
+    answer:
+      "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها بمقدار ربع العشر.",
+    text: "إذا حال الحول على النقود وبلغت النصاب وجبت زكاتها بمقدار ربع العشر.",
   });
   const result = await engine.ask("ما مقدار زكاة النقود؟", "ar", [
     "islamqa-ar",

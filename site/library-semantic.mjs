@@ -1,5 +1,6 @@
-import { libraryTerms } from "./library-core.mjs?v=0.14.2";
-import { libraryDB } from "./library-store.mjs?v=0.14.2";
+import { libraryTerms } from "./library-core.mjs?v=0.15.1";
+import { libraryDB } from "./library-store.mjs?v=0.15.1";
+import { assessIntent } from "./query-intent.mjs?v=0.15.1";
 
 const VERSION = "e5-q8-passages-v3";
 export function lexicalCandidates(books, question) {
@@ -128,6 +129,8 @@ export function selectSemanticPassages(rows, question) {
             !r.unitIds.some((id) => row.unitIds.includes(id)),
         )?.similarity || 0;
       const adequate =
+        assessIntent(question, { text: row.text }, { passage: true }).kind ===
+          "direct" &&
         (!asksMoney || hasMoneyEvidence) &&
         row.similarity >= best - 0.025 &&
         ((row.similarity >= 0.84 && coverage >= 0.4) ||
@@ -168,6 +171,8 @@ export async function semanticLibrarySearch(books, question, scope, progress) {
   );
   const strongExact =
     strongest &&
+    assessIntent(question, { text: strongest.text }, { passage: true }).kind ===
+      "direct" &&
     wanted.length >= 2 &&
     strongest.coverage === 1 &&
     (!nextIndependent || strongest.lexical >= nextIndependent.lexical * 1.35);

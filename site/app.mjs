@@ -1,7 +1,7 @@
-import { normalize } from "./core.mjs?v=0.14.2";
-import { createLibrary } from "./library-ui.mjs?v=0.14.2";
-import { copy } from "./i18n.mjs?v=0.14.2";
-import { clarificationChoices } from "./policy.mjs?v=0.14.2";
+import { normalize } from "./core.mjs?v=0.15.1";
+import { createLibrary } from "./library-ui.mjs?v=0.15.1";
+import { copy } from "./i18n.mjs?v=0.15.1";
+import { clarificationChoices } from "./policy.mjs?v=0.15.1";
 const $ = (id) => document.getElementById(id);
 const el = (tag, text, cls) => {
   const n = document.createElement(tag);
@@ -376,7 +376,7 @@ function initialize() {
     return;
   }
   worker ||= new Worker(
-    new URL("./search-worker.mjs?v=0.14.2", import.meta.url),
+    new URL("./search-worker.mjs?v=0.15.1", import.meta.url),
     {
       type: "module",
     },

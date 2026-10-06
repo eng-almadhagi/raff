@@ -12,6 +12,73 @@ const vocabulary = {
   stop: ["the", "how", "to", "a", "of", "is", "what"],
   concepts: {},
 };
+test("a numerical detail may be supported by the full answer beneath a broader title", () => {
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "Borrowing",
+        answer: "The minimum borrowing period is one day.",
+      },
+      "What is the minimum borrowing period?",
+      vocabulary,
+    ),
+    true,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      { title: "Borrowing", answer: "Borrowing is available." },
+      "What is the minimum borrowing period?",
+      vocabulary,
+    ),
+    false,
+  );
+});
+test("incidental mentions and unrequested contexts are not direct evidence across domains", () => {
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "Water damage during camera cleaning",
+        answer: "Camera cleaning requires care. ".repeat(50),
+      },
+      "Camera cleaning",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "Book registration at prisons",
+        answer: "Book registration is available.",
+      },
+      "Book registration",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "قراءة القرآن عند القبر",
+        answer: "قراءة القرآن عند القبر موضوع هذا الجواب.",
+      },
+      "قراءة القرآن",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "Camera cleaning",
+        answer: "Camera cleaning requires a soft cloth.",
+      },
+      "Camera cleaning",
+      vocabulary,
+    ),
+    true,
+  );
+});
 test("inflected English activity words match without changing quotations", () => {
   assert.deepEqual(
     intentTerms("wiping socks", vocabulary),
@@ -245,6 +312,29 @@ test("rejecting one narrow case does not admit another narrower replacement", as
       title: "نص من الكتاب — عنوان غير متاح",
       question: "هل تجب الزكاة في مال الزواج؟",
     }),
+    true,
+  );
+});
+
+test("short unrelated answers are not evidence simply because they are short", () => {
+  assert.equal(
+    answerSupportsQuestion(
+      { title: "شروط الاستعارة", answer: "تفتح المكتبة صباحًا." },
+      "كم مقدار زكاة النقود؟",
+      vocabulary,
+    ),
+    false,
+  );
+  assert.equal(
+    answerSupportsQuestion(
+      {
+        title: "قراءة الفاتحة",
+        question: "هل تجوز قراءة الفاتحة؟",
+        answer: "نعم.",
+      },
+      "قراءة الفاتحة",
+      vocabulary,
+    ),
     true,
   );
 });

@@ -1,9 +1,10 @@
-import { terms, normalize } from "./core.mjs?v=0.14.2";
+import { terms, normalize } from "./core.mjs?v=0.15.1";
+import { assessIntent, questionProfile } from "./query-intent.mjs?v=0.15.1";
 
 // Presentation words carry little information about the requested subject.
 // This layer never changes stored quotations or maps a question to an answer ID.
 const framing = new Set(
-  "مذكور مصدر مصادر بحسب انقل مرجع اعرض اعطني فتوى فتاوي نص نصوص يقول قول اقوال مختلفة شروطها شرطها بالنسبة ذكر يتحدث المذكور استعمال استخدام اداء يتناول مستقيم should say says mentioned sources source according published explain ruling rulings permissible islam islamic islamqa answer answers evidence proof discussed please over using use".split(
+  "ما ماذا هل حكم كم مقدار مذكور مصدر مصادر بحسب انقل مرجع اعرض اعطني فتوى فتاوي نص نصوص يقول قول اقوال مختلفة شروطها شرطها بالنسبة ذكر يتحدث المذكور استعمال استخدام اداء يتناول مستقيم should say says mentioned sources source according published explain ruling rulings permissible islam islamic islamqa answer answers evidence proof discussed please over using use".split(
     " ",
   ),
 );
@@ -20,6 +21,19 @@ const numberWords = {
   عشرة: "عشر",
 };
 const topicForms = {
+  يقرا: "قراءة",
+  اقرا: "قراءة",
+  اسمع: "استماع",
+  يستمع: "استماع",
+  ينصت: "استماع",
+  يحمل: "حمل",
+  سجائر: "تدخين",
+  سيجارة: "تدخين",
+  دخان: "تدخين",
+  تبغ: "تدخين",
+  cigarette: "smoking",
+  cigarettes: "smoking",
+  tobacco: "smoking",
   اختلاف: "خلاف",
   اختلف: "خلاف",
   يختلف: "خلاف",
@@ -54,6 +68,9 @@ topicForms.شربة = "مرق";
 
 framing.add("minimum");
 framing.add("number");
+framing.add("many");
+for (const word of ["معه", "ولا", "له", "لها", "لهم", "علي", "عليه", "عليها"])
+  framing.add(word);
 framing.add("while");
 framing.add("through");
 framing.add("ادلة");
@@ -165,6 +182,48 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
     return false;
   const requested = intentTerms(question, vocabulary);
   const body = intentTerms(answer, vocabulary);
+  const titleTerms = intentTerms(unit.title || "", vocabulary);
+  const titleCoverage =
+    requested.filter((t) => titleTerms.includes(t)).length /
+    Math.max(1, requested.length);
+  // A shared incidental word in a long answer cannot establish its subject.
+  // Require the source's stated topic to cover a substantial part of the query.
+  const statedTerms = new Set([
+    ...titleTerms,
+    ...intentTerms(unit.question || "", vocabulary),
+  ]);
+  const statedCoverage =
+    requested.filter((t) => statedTerms.has(t)).length /
+    Math.max(1, requested.length);
+  const supportedQuantity =
+    questionProfile(question).type === "quantity" &&
+    titleCoverage >= 0.5 &&
+    requested.every((t) => body.includes(t));
+  if (
+    titleTerms.length &&
+    (titleCoverage < 0.3 ||
+      (titleCoverage < 0.75 && statedCoverage < 0.75 && !supportedQuantity))
+  )
+    return false;
+  if (
+    requested.length <= 2 &&
+    titleCoverage >= 0.99 &&
+    !(
+      requested.length >= 2 && requested.every((t, i) => titleTerms[i] === t)
+    ) &&
+    requested.length / Math.max(1, titleTerms.length) < 0.5
+  )
+    return false;
+  const context = normalize(unit.title || "").match(
+    /(?:^|\s)(?:عند|اثناء|بشكل|during|at)\s+(.+)$/iu,
+  )?.[1];
+  if (context) {
+    const contextTerms = intentTerms(context, vocabulary).filter(
+      (t) => !framing.has(t),
+    );
+    if (contextTerms.length && !contextTerms.some((t) => requested.includes(t)))
+      return false;
+  }
   // Requested comparisons and numeric limits need affirmative textual support.
   if (
     /minimum|least|fewest/iu.test(question) &&
@@ -209,14 +268,28 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
     )
       return false;
   }
-  if (answer.length <= 850) return true;
+  if (answer.length <= 850) {
+    if (!requested.length) return false;
+    const context = intentTerms(
+      (unit.title || "") + " " + (unit.question || ""),
+      vocabulary,
+    );
+    const overlap = (list) =>
+      requested.filter((t) => list.includes(t)).length / requested.length;
+    // A short answer is not automatically sufficient. A contextual yes/no may
+    // qualify only when the source's own question/title supplies the subject.
+    return overlap(body) >= 0.5 || overlap(context) >= 0.75;
+  }
   const subject = intentTerms(question, vocabulary)[0];
   if (!subject) return true;
   // A question may list several issues while its answer addresses only some.
   // Do not mistake a mention in that question for evidence in the long answer.
   const bodyTerms = intentTerms(answer, vocabulary);
   return (
-    bodyTerms.includes(subject) ||
+    (bodyTerms.includes(subject) &&
+      requested.filter((t) => bodyTerms.includes(t)).length /
+        requested.length >=
+        0.5) ||
     (requested.length >= 2 &&
       requested.filter((t) => bodyTerms.includes(t)).length /
         requested.length >=
@@ -227,6 +300,7 @@ export function answerSupportsQuestion(unit, question, vocabulary) {
 // A source may mention the requested amount while answering a different,
 // narrower case. Keep that case discoverable, but never present it as the answer.
 export function isRelatedCase(question, unit) {
+  if (assessIntent(question, unit).kind !== "direct") return true;
   const q = normalize(question),
     title = normalize(
       /عنوان غير متاح|untitled/iu.test(unit.title || "")

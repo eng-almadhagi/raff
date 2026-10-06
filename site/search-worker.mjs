@@ -1,4 +1,4 @@
-import { PagedEngine, checked } from "./paged-engine.mjs?v=0.14.2";
+import { PagedEngine, checked } from "./paged-engine.mjs?v=0.15.1";
 let engine,
   extractor,
   modelSetupMilliseconds = 0,

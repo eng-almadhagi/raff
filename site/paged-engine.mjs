@@ -3,12 +3,12 @@ import {
   evidence,
   normalize,
   focusedPreview,
-} from "./core.mjs?v=0.14.2";
+} from "./core.mjs?v=0.15.1";
 import {
   classifyPolicy,
   policyMessages,
   directReference,
-} from "./policy.mjs?v=0.14.2";
+} from "./policy.mjs?v=0.15.1";
 import {
   prepareSubjects,
   restoreSubjects,
@@ -16,7 +16,7 @@ import {
   subjectMatch,
   answerSupportsQuestion,
   isRelatedCase,
-} from "./relevance.mjs?v=0.14.2";
+} from "./relevance.mjs?v=0.15.1";
 
 export const bucket = (text) => {
   let h = 0;
@@ -509,16 +509,19 @@ export class PagedEngine {
               .filter(
                 ({ u, match }) =>
                   u.retrievable &&
-                  !scopeConflict(query, u) &&
-                  !isRelatedCase(query, u) &&
                   match.titleCoverage >= 0.99 &&
-                  match.precision >= 0.75,
+                  match.precision >= 0.75 &&
+                  !scopeConflict(query, u) &&
+                  !isRelatedCase(query, u),
               )
               .sort((a, b) => b.match.score - a.match.score)
               .slice(0, 3);
             for (const { u } of candidates) {
               const citation = await this.citation(meta, u.id, false, question);
-              if (answerSupportsQuestion(citation, query, this.vocabulary)) {
+              if (
+                answerSupportsQuestion(citation, query, this.vocabulary) &&
+                !isRelatedCase(query, citation)
+              ) {
                 fast.set(meta.id, citation);
                 break;
               }
@@ -618,17 +621,24 @@ export class PagedEngine {
         // Ambiguous questions are handled by policy before retrieval.
         const selected = eligible
             .filter((r) => enough(r) && r.score >= best.score - 0.2)
+            .sort(
+              (a, b) =>
+                b.score +
+                0.25 * b.subject.titleCoverage * b.subject.precision -
+                (a.score +
+                  0.25 * a.subject.titleCoverage * a.subject.precision),
+            )
             .slice(0, 20),
           citations = [],
           suggestions = [];
         for (const r of selected) {
           const c = await this.citation(meta, r.id, false, question);
-          if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
           if (isRelatedCase(query, c)) {
             if (suggestions.length < 3)
               suggestions.push({ id: c.id, title: c.title });
             continue;
           }
+          if (!answerSupportsQuestion(c, query, this.vocabulary)) continue;
           if (citations.length && r.score < best.score - 0.04) continue;
           if (!citations.some((p) => p.text === c.text))
             citations.push(await this.citation(meta, r.id, true, question));
